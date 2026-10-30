@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/form";
 import { api, notify, useStudio } from "@/lib/api";
 import { checkForUpdates, inDesktop, useUpdates } from "@/lib/updates";
+import { appimageLocation, setLauncher, type Location } from "@/lib/desktop";
 import type { KeyProvider } from "@/lib/types";
 
 // One API provider: key and/or URL, saved and checked on Save.
@@ -58,6 +59,30 @@ function ProviderRow({ p, status, onChange }: { p: KeyProvider; status?: { avail
 
 // Which AI the chat can use: agent CLIs found on this machine, and API
 // providers with a key. Keys stay on this machine, owner-only, never shown again.
+// Linux AppImage: the app-menu entry can be removed (an AppImage has no
+// uninstaller, so deleting the file would otherwise leave it behind) or added back.
+function MenuEntry() {
+  const [loc, setLoc] = useState<Location | null>(null);
+  useEffect(() => { appimageLocation().then(setLoc).catch(() => {}); }, []);
+  if (!loc?.appimage) return null;
+  const toggle = async () => {
+    try {
+      await setLauncher(!loc.launcher);
+      setLoc({ ...loc, launcher: !loc.launcher });
+    } catch (e) {
+      notify({ tone: "error", title: "Not changed", description: String(e) });
+    }
+  };
+  return (
+    <section className="flex items-center justify-between gap-3 rounded-xl border border-border px-3 py-2.5 text-xs">
+      <span>App menu entry <span className="ml-2 text-text-muted">{loc.launcher ? "shown" : "removed"}</span></span>
+      <button type="button" onClick={toggle} className="text-text-secondary hover:text-text-primary focus-ring">
+        {loc.launcher ? "Remove from app menu" : "Add to app menu"}
+      </button>
+    </section>
+  );
+}
+
 function AppVersion() {
   const { version, update, phase, error } = useUpdates();
   if (!inDesktop) return null;
@@ -97,6 +122,7 @@ export function EnginesSheet({ open, onOpenChange }: { open: boolean; onOpenChan
         </SheetHeader>
         <SheetBody className="space-y-6">
           <AppVersion />
+          <MenuEntry />
           <section>
             <div className="mb-2 flex items-center justify-between">
               <h3 className="flex items-center gap-1.5 text-xs font-semibold"><Terminal className="h-3.5 w-3.5" /> Installed tools</h3>

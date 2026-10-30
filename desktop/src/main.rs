@@ -31,7 +31,13 @@ fn main() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
-        .invoke_handler(tauri::generate_handler![update::install_update])
+        .invoke_handler(tauri::generate_handler![
+            update::install_update,
+            desktop_entry::appimage_location,
+            desktop_entry::move_to_applications,
+            desktop_entry::keep_here,
+            desktop_entry::set_launcher,
+        ])
         .setup(|app| {
             let data = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data)?;

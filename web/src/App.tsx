@@ -7,6 +7,7 @@ import { ChatPanel } from "@/features/chat/ChatPanel";
 import { Workspace } from "@/features/results/Workspace";
 import { NewStrategySheet } from "@/features/shell/NewStrategySheet";
 import { TitleBar } from "@/features/shell/TitleBar";
+import { MoveToApplications } from "@/features/shell/MoveToApplications";
 import { SplitDivider } from "@/features/shell/SplitDivider";
 import { ResizeEdges } from "@/features/shell/WindowControls";
 import { useLocalNumber, useMediaQuery } from "@/hooks/use-layout";
@@ -96,6 +97,7 @@ export default function App() {
   return (
     <div className="flex h-dvh flex-col bg-background text-text-primary">
       <ResizeEdges />
+      <MoveToApplications />
       <TitleBar chatCollapsed={!!collapsed} onToggleChat={wide ? () => setCollapsed(collapsed ? 0 : 1) : undefined} onOpenStrategy={chooseStrategy} />
       <NewStrategySheet open={newOpen} onOpenChange={setNewOpen} onSent={(id) => { setThreadId(id); setChatOpen(true); setCollapsed(0); }} />
       {wide ? (
