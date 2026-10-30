@@ -16,7 +16,9 @@
         "height": 900,
         "minWidth": 900,
         "minHeight": 600,
-        "url": "index.html"
+        "url": "index.html",
+        "decorations": false,
+        "shadow": true
       }
     ],
     "security": {

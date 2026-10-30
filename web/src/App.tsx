@@ -6,7 +6,9 @@ import { useStudio } from "@/lib/api";
 import { ChatPanel } from "@/features/chat/ChatPanel";
 import { Workspace } from "@/features/results/Workspace";
 import { NewStrategySheet } from "@/features/shell/NewStrategySheet";
-import { UpdateCard } from "@/features/shell/UpdateCard";
+import { TitleBar } from "@/features/shell/TitleBar";
+import { SplitDivider } from "@/features/shell/SplitDivider";
+import { ResizeEdges } from "@/features/shell/WindowControls";
 import { useLocalNumber, useMediaQuery } from "@/hooks/use-layout";
 
 export default function App() {
@@ -21,9 +23,20 @@ export default function App() {
   const [toastOpen, setToastOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [newOpen, setNewOpen] = useState(false);
-  const [split, setSplit] = useLocalNumber("studio.split", 30);
   const wide = useMediaQuery("(min-width: 900px)");
-  const dragging = useRef(false);
+  const roomy = useMediaQuery("(min-width: 1100px)");
+  // the chat's width in pixels, kept between 300 px and what leaves results 520 px (and at most 55 %)
+  const [chatWidth, setChatWidth] = useLocalNumber("studio.chatWidth", 420);
+  const [collapsed, setCollapsed] = useLocalNumber("studio.chatCollapsed", 0);
+  const [winWidth, setWinWidth] = useState(window.innerWidth);
+  useEffect(() => {
+    const on = () => setWinWidth(window.innerWidth);
+    window.addEventListener("resize", on);
+    return () => window.removeEventListener("resize", on);
+  }, []);
+  const maxChat = Math.max(300, Math.min(winWidth * 0.55, winWidth - 520));
+  const shownChat = Math.min(Math.max(300, chatWidth), maxChat);
+  const defaultChat = roomy ? 420 : 320;
   const seenRunning = useRef(new Set<string>());
   const knownStrategies = useRef<Set<string> | null>(null);
 
@@ -77,29 +90,23 @@ export default function App() {
     setToastOpen(true);
   }, [notice]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    const move = (e: PointerEvent) => {
-      if (dragging.current) setSplit(Math.min(50, Math.max(22, (e.clientX / window.innerWidth) * 100)));
-    };
-    const up = () => { dragging.current = false; document.body.style.userSelect = ""; };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
-    return () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
-  }, [setSplit]);
-
   const chat = <ChatPanel threadId={threadId} onThread={setThreadId} runId={runId} onOpenRun={(id) => { openRun(id); setChatOpen(false); }} />;
   const workspace = <Workspace strategy={strategy} runId={runId} onStrategy={chooseStrategy} onRunChange={openRun} onNewStrategy={() => setNewOpen(true)} />;
 
   return (
     <div className="flex h-dvh flex-col bg-background text-text-primary">
-      <NewStrategySheet open={newOpen} onOpenChange={setNewOpen} onSent={(id) => { setThreadId(id); setChatOpen(true); }} />
+      <ResizeEdges />
+      <TitleBar chatCollapsed={!!collapsed} onToggleChat={wide ? () => setCollapsed(collapsed ? 0 : 1) : undefined} onOpenStrategy={chooseStrategy} />
+      <NewStrategySheet open={newOpen} onOpenChange={setNewOpen} onSent={(id) => { setThreadId(id); setChatOpen(true); setCollapsed(0); }} />
       {wide ? (
         <div className="flex min-h-0 flex-1">
-          <aside className="min-w-0 border-r border-border" style={{ width: `${split}%` }}>{chat}</aside>
-          <div role="separator" aria-orientation="vertical" aria-label="Resize panels"
-            onPointerDown={() => { dragging.current = true; document.body.style.userSelect = "none"; }}
-            onDoubleClick={() => setSplit(30)}
-            className="-mx-1 w-2 shrink-0 cursor-col-resize bg-transparent transition-colors hover:bg-border" />
+          {!collapsed && (
+            <>
+              <aside className="min-w-0 shrink-0 border-r border-border" style={{ width: shownChat }}>{chat}</aside>
+              <SplitDivider onResize={(x) => setChatWidth(Math.round(Math.min(Math.max(300, x), maxChat)))}
+                onReset={() => setChatWidth(defaultChat)} onCollapse={() => setCollapsed(1)} />
+            </>
+          )}
           <main className="min-w-0 flex-1">
             {workspace}
           </main>
@@ -120,7 +127,6 @@ export default function App() {
         </main>
       )}
 
-      <UpdateCard />
       {notice && (
         <VelocityToast key={notice.id} open={toastOpen} onDismiss={() => setToastOpen(false)}
           title={notice.title} description={notice.description} position="bottom-right" duration={6000}

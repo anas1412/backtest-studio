@@ -4,7 +4,10 @@ import { Logo } from "./Logo";
 export function EmptyState({ title, hint, action }: { title: string; hint: string; action?: { label: string; onClick: () => void } }) {
   return (
     <div className="relative flex min-h-[320px] flex-1 items-center justify-center overflow-hidden rounded-2xl border border-border bg-surface">
-      <DotField className="absolute inset-0 opacity-40" gradientFrom="rgba(242,242,243,0.25)" gradientTo="rgba(111,111,117,0.15)" />
+      {/* the dot field sizes itself; keep it in its own layer behind the content */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden opacity-40">
+        <DotField className="h-full w-full" gradientFrom="rgba(242,242,243,0.25)" gradientTo="rgba(111,111,117,0.15)" />
+      </div>
       <div className="relative max-w-sm px-6 text-center">
         <div className="mx-auto mb-4 flex justify-center">
           <Logo size={44} />

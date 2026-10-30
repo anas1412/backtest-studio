@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { PanelLeft, Square } from "lucide-react";
+import { MessagesSquare, Square } from "lucide-react";
 import { Chat, ChatComposer, ChatHeader, ChatMessage, ChatSidebar, useChat, type ChatConversationThread } from "@/components/ui/chat";
 import { AIResponse, AIResponseContent } from "@/components/ui/ai-response";
 import { AIAgentActivity, AgentActivityTimeline } from "@/components/ui/ai-agent-activity";
@@ -24,7 +24,7 @@ function ThreadsToggle() {
   return (
     <button type="button" onClick={() => setIsSidebarOpen(!isSidebarOpen)} aria-label="Conversations"
       className="ml-3 rounded-lg border border-border p-1.5 text-text-muted transition-colors hover:text-text-primary focus-ring">
-      <PanelLeft className="h-4 w-4" />
+      <MessagesSquare className="h-4 w-4" />
     </button>
   );
 }

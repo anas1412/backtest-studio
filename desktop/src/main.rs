@@ -4,6 +4,7 @@
 // hosts the window, keeps one instance, and installs updates.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod desktop_entry;
 mod update;
 
 use std::sync::Mutex;
@@ -17,6 +18,8 @@ fn main() {
     if std::env::var_os("WAYLAND_DISPLAY").is_some() && std::env::var("GDK_BACKEND").as_deref() != Ok("wayland") {
         std::env::set_var("GDK_BACKEND", "wayland");
     }
+
+    desktop_entry::register();
 
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
