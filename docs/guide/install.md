@@ -3,11 +3,21 @@
 Backtest Studio runs on **Windows 10/11** and **Linux** (64-bit). It drives the MetaTrader 5 you already have, so you
 also need MT5 from your broker: see [First start](./first-start).
 
-Download the latest version from the [releases page](https://github.com/anas1412/backtest-studio/releases/latest).
+<script setup>
+import { VPButton } from "vitepress/theme";
+</script>
+
+<div style="display: flex; flex-wrap: wrap; gap: 12px; margin: 24px 0">
+  <VPButton tag="a" size="big" theme="brand" text="Download for Windows" href="https://github.com/anas1412/backtest-studio/releases/latest/download/BacktestStudio-Windows-Setup.exe" />
+  <VPButton tag="a" size="big" theme="brand" text="Download for Linux" href="https://github.com/anas1412/backtest-studio/releases/latest/download/BacktestStudio-Linux.AppImage" />
+</div>
+
+Both always give the newest version. Release notes and older versions are on the
+[releases page](https://github.com/anas1412/backtest-studio/releases).
 
 ### Windows
 
-1. Download `Backtest.Studio_<version>_x64-setup.exe`.
+1. Download it with the **Windows** button above (`BacktestStudio-Windows-Setup.exe`).
 2. Run it. Windows SmartScreen may say *"Windows protected your PC"*: the app isn't code-signed, so click
    **More info → Run anyway**.
 3. Start Backtest Studio from the Start menu.
@@ -16,8 +26,8 @@ To uninstall: Settings → Apps → Backtest Studio.
 
 ### Linux
 
-1. Download `Backtest.Studio_<version>_amd64.AppImage`.
-2. Make it executable: `chmod +x Backtest.Studio_*_amd64.AppImage`, or in your file manager Properties → Permissions →
+1. Download it with the **Linux** button above (`BacktestStudio-Linux.AppImage`).
+2. Make it executable: `chmod +x BacktestStudio-Linux.AppImage`, or in your file manager Properties → Permissions →
    *Allow executing as a program*.
 3. Open it.
 

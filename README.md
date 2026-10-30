@@ -1,6 +1,8 @@
 # Backtest Studio
 
-**[Website & docs](https://anas1412.github.io/backtest-studio/)** · [Download](https://github.com/anas1412/backtest-studio/releases/latest) · [Changelog](CHANGELOG.md)
+**[⬇ Download for Windows](https://github.com/anas1412/backtest-studio/releases/latest/download/BacktestStudio-Windows-Setup.exe)** · **[⬇ Download for Linux](https://github.com/anas1412/backtest-studio/releases/latest/download/BacktestStudio-Linux.AppImage)**
+
+[Website & docs](https://anas1412.github.io/backtest-studio/) · [All versions](https://github.com/anas1412/backtest-studio/releases) · [Changelog](CHANGELOG.md)
 
 ![Backtest Studio: the chat on the left, a backtest's settings, stats, account-rules check and chart on the right](docs/public/screenshot.png)
 
@@ -16,11 +18,11 @@ When a strategy is ready you can run it live in MT5 from the app.
 
 ## Install
 
-Download the latest release from [Releases](https://github.com/anas1412/backtest-studio/releases/latest):
+Use the download links at the top (they always give the newest version):
 
-- **Windows:** `Backtest.Studio_<version>_x64-setup.exe`. Windows warns about an unknown publisher (the app isn't
+- **Windows:** run `BacktestStudio-Windows-Setup.exe`. Windows warns about an unknown publisher (the app isn't
   code-signed): More info → Run anyway.
-- **Linux:** `Backtest.Studio_<version>_amd64.AppImage` → make it executable (`chmod +x`) and run it.
+- **Linux:** make `BacktestStudio-Linux.AppImage` executable (`chmod +x`) and run it.
 
 The app updates itself: when a new version is out it offers "Restart to update". Step by step, with troubleshooting:
 [Install guide](https://anas1412.github.io/backtest-studio/guide/install).

@@ -39,8 +39,8 @@ Check that an engine is selected and signed in (*Engines & API keys*). If its an
 
 ## Updating fails or stalls
 
-Download the latest version from the [releases page](https://github.com/anas1412/backtest-studio/releases/latest) and
-install it over the old one (Windows) or replace the AppImage (Linux). Your data is kept.
+Download the latest version ([Windows](https://github.com/anas1412/backtest-studio/releases/latest/download/BacktestStudio-Windows-Setup.exe),
+[Linux](https://github.com/anas1412/backtest-studio/releases/latest/download/BacktestStudio-Linux.AppImage)) and install it over the old one (Windows) or replace the AppImage (Linux). Your data is kept.
 
 ## Windows: "Windows protected your PC"
 
@@ -49,7 +49,7 @@ The installer isn't code-signed, so SmartScreen doesn't know it. Click **More in
 ## Linux: the AppImage doesn't open
 
 - **Nothing happens, or "launching executables is not allowed":** the file isn't executable yet:
-  `chmod +x Backtest.Studio_*.AppImage`, or Properties → Permissions in your file manager.
+  `chmod +x BacktestStudio-Linux.AppImage`, or Properties → Permissions in your file manager.
 - **An error mentions FUSE:** install your distribution's FUSE 2 package (often `libfuse2` or `fuse2`).
 - **Anything else:** run it from a terminal to see the error, and
   [open an issue](https://github.com/anas1412/backtest-studio/issues) with it.

@@ -1,0 +1,39 @@
+name: Download links
+
+# Copies a release's installers under fixed names, so these links always give
+# the newest version (the website and README use them):
+#   …/releases/latest/download/BacktestStudio-Windows-Setup.exe
+#   …/releases/latest/download/BacktestStudio-Linux.AppImage
+# Runs after every release; run it by hand to redo the latest one.
+on:
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag (empty = the latest release)
+        type: string
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  copy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Upload the installers under fixed names
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          tag="${TAG:-$(gh release view --json tagName -q .tagName)}"
+          mkdir out && cd out
+          gh release download "$tag" -p '*_x64-setup.exe' -p '*_amd64.AppImage'
+          mv ./*_x64-setup.exe BacktestStudio-Windows-Setup.exe
+          mv ./*_amd64.AppImage BacktestStudio-Linux.AppImage
+          gh release upload "$tag" BacktestStudio-Windows-Setup.exe BacktestStudio-Linux.AppImage --clobber

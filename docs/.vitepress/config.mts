@@ -16,7 +16,14 @@ export default defineConfig({
       { text: "Guide", link: "/guide/install" },
       { text: "Reference", link: "/reference/files" },
       { text: "Changelog", link: "/changelog" },
-      { text: "Download", link: `${repo}/releases/latest` },
+      {
+        text: "Download",
+        items: [
+          { text: "Windows", link: `${repo}/releases/latest/download/BacktestStudio-Windows-Setup.exe` },
+          { text: "Linux (AppImage)", link: `${repo}/releases/latest/download/BacktestStudio-Linux.AppImage` },
+          { text: "All versions", link: `${repo}/releases` },
+        ],
+      },
     ],
     sidebar: [
       {

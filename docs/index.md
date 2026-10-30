@@ -10,8 +10,11 @@ hero:
     alt: Backtest Studio
   actions:
     - theme: brand
-      text: Download
-      link: https://github.com/anas1412/backtest-studio/releases/latest
+      text: Download for Windows
+      link: https://github.com/anas1412/backtest-studio/releases/latest/download/BacktestStudio-Windows-Setup.exe
+    - theme: brand
+      text: Download for Linux
+      link: https://github.com/anas1412/backtest-studio/releases/latest/download/BacktestStudio-Linux.AppImage
     - theme: alt
       text: Get started
       link: /guide/install

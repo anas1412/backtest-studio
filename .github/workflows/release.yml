@@ -84,3 +84,11 @@ jobs:
             Installed copies update themselves from here.
           releaseDraft: ${{ github.ref_type != 'tag' }}
           includeUpdaterJson: true
+
+  # fixed-name copies of the installers, for the "latest" download links
+  download-links:
+    needs: build
+    if: github.ref_type == 'tag'
+    uses: ./.github/workflows/download-links.yml
+    with:
+      tag: ${{ github.ref_name }}
