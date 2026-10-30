@@ -73,7 +73,9 @@ async fn fastest_address(target: &reqwest::Url) -> Option<(String, SocketAddr)> 
 #[tauri::command]
 pub async fn install_update<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
     let err = |e: tauri_plugin_updater::Error| e.to_string();
-    let Some(update) = app.updater().map_err(err)?.check().await.map_err(err)? else {
+    // a connection that stalls without closing must end, so the fallback below gets its turn
+    let stall = Duration::from_secs(30);
+    let Some(update) = app.updater_builder().configure_client(move |b| b.read_timeout(stall)).build().map_err(err)?.check().await.map_err(err)? else {
         return Err("No update available".into());
     };
     let target = redirect_target(update.download_url.as_str()).await;
@@ -83,7 +85,7 @@ pub async fn install_update<R: Runtime>(app: AppHandle<R>) -> Result<(), String>
     let pinned = match route.clone() {
         Some((host, addr)) => app
             .updater_builder()
-            .configure_client(move |b| b.resolve(&host, addr))
+            .configure_client(move |b| b.resolve(&host, addr).read_timeout(stall))
             .build()
             .map_err(err)?
             .check()
@@ -99,7 +101,8 @@ pub async fn install_update<R: Runtime>(app: AppHandle<R>) -> Result<(), String>
         if route.is_none() {
             return Err(e);
         }
-        let plain = app.updater().map_err(err)?.check().await.map_err(err)?.ok_or("No update available")?;
+        let plain = app.updater_builder().configure_client(move |b| b.read_timeout(stall)).build().map_err(err)?
+            .check().await.map_err(err)?.ok_or("No update available")?;
         download(&app, plain, None).await?;
     }
     app.restart();
