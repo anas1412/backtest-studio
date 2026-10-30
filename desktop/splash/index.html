@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Backtest Studio</title>
+  <style>
+    /* shown for the second or two the local server takes to start */
+    html, body { height: 100%; margin: 0; background: #111113; color: #a1a1a6; font: 13px system-ui, sans-serif; }
+    body { display: grid; place-items: center; }
+    .box { text-align: center; max-width: 36rem; padding: 0 1.5rem; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #34d399; display: inline-block; margin-right: 8px; animation: p 1s ease-in-out infinite alternate; }
+    @keyframes p { from { opacity: .3 } to { opacity: 1 } }
+    pre { text-align: left; white-space: pre-wrap; background: #18181a; border: 1px solid #29292c; border-radius: 10px; padding: 12px; color: #f2f2f3; max-height: 50vh; overflow: auto; }
+    h1 { color: #f2f2f3; font-size: 15px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="box" id="box"><span class="dot"></span>Starting Backtest Studio…</div>
+  <script>
+    // called by the app when the server could not start
+    window.showError = (msg) => {
+      document.getElementById("box").innerHTML = "<h1>Backtest Studio couldn't start its server</h1><pre></pre><p>Restart the app. If it keeps happening, report this message.</p>";
+      document.querySelector("pre").textContent = msg;
+    };
+  </script>
+</body>
+</html>

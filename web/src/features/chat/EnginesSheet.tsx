@@ -4,6 +4,7 @@ import { Sheet, SheetBody, SheetContent, SheetDescription, SheetHeader, SheetTit
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/form";
 import { api, notify, useStudio } from "@/lib/api";
+import { checkForUpdates, inDesktop, useUpdates } from "@/lib/updates";
 import type { KeyProvider } from "@/lib/types";
 
 // One API provider: key and/or URL, saved and checked on Save.
@@ -57,6 +58,23 @@ function ProviderRow({ p, status, onChange }: { p: KeyProvider; status?: { avail
 
 // Which AI the chat can use: agent CLIs found on this machine, and API
 // providers with a key. Keys stay on this machine, owner-only, never shown again.
+function AppVersion() {
+  const { version, update, phase, error } = useUpdates();
+  if (!inDesktop) return null;
+  return (
+    <section className="flex items-center justify-between gap-3 rounded-xl border border-border px-3 py-2.5 text-xs">
+      <span>
+        Backtest Studio {version ?? ""}
+        <span className="ml-2 text-text-muted">
+          {phase === "checking" ? "checking…" : update ? `${update.version} available` : phase === "latest" ? "up to date" : phase === "error" ? `check failed: ${error}` : ""}
+        </span>
+      </span>
+      <button type="button" onClick={checkForUpdates} disabled={phase === "checking"}
+        className="text-text-secondary hover:text-text-primary disabled:opacity-40 focus-ring">Check for updates</button>
+    </section>
+  );
+}
+
 export function EnginesSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const engines = useStudio((s) => s.engines);
   const [keys, setKeys] = useState<KeyProvider[] | null>(null);
@@ -78,6 +96,7 @@ export function EnginesSheet({ open, onOpenChange }: { open: boolean; onOpenChan
           <SheetDescription>The AI the chat can use: tools installed here, and providers you add a key for.</SheetDescription>
         </SheetHeader>
         <SheetBody className="space-y-6">
+          <AppVersion />
           <section>
             <div className="mb-2 flex items-center justify-between">
               <h3 className="flex items-center gap-1.5 text-xs font-semibold"><Terminal className="h-3.5 w-3.5" /> Installed tools</h3>

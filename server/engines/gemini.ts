@@ -6,7 +6,9 @@ import type { Engine, EngineStatus, SendContext } from "./types";
 import { findBinary, version, runJsonLines } from "./cli";
 
 const bin = () => findBinary("gemini", ["~/.local/bin", "~/.npm-global/bin"]);
-const SCRIPTS = ["compile", "backtest", "live"].flatMap((s) => [`run_shell_command(tools/${s}.sh)`, `run_shell_command(./tools/${s}.sh)`]);
+const SCRIPTS = ["compile", "backtest", "live"].flatMap((s) => [
+  `run_shell_command(tools/${s}.sh)`, `run_shell_command(./tools/${s}.sh)`, `run_shell_command(tools\\${s}.cmd)`,
+]);
 
 export const geminiEngine: Engine = {
   id: "gemini",

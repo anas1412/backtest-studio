@@ -1,0 +1,70 @@
+name: Release
+
+# A tag like v0.2.0 builds the Linux AppImage and the Windows installer, signs
+# them for the in-app updater, and publishes them with latest.json (what
+# installed apps check). A manual run builds the same into a draft release, to
+# test the pipeline without publishing. Cut a release with scripts/release.sh.
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # 22.04: the AppImage then runs on glibc 2.35 and newer, i.e. most current distros
+          - os: ubuntu-22.04
+            bundles: appimage
+          - os: windows-latest
+            bundles: nsis
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the tag matches the app version
+        if: github.ref_type == 'tag'
+        shell: bash
+        run: |
+          version="$(grep -m1 '"version"' desktop/tauri.conf.json | sed -E 's/.*"([0-9.]+)".*/\1/')"
+          [ "$GITHUB_REF_NAME" = "v$version" ] || { echo "tag $GITHUB_REF_NAME but desktop/tauri.conf.json says $version" >&2; exit 1; }
+
+      - uses: oven-sh/setup-bun@v2
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: desktop -> target
+
+      - name: Linux build packages
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install JavaScript packages
+        shell: bash
+        run: bun install --frozen-lockfile && (cd web && bun install --frozen-lockfile)
+
+      # beforeBuildCommand builds the web UI and compiles the server sidecar for this OS
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: desktop
+          tauriScript: bunx tauri
+          args: --bundles ${{ matrix.bundles }}
+          tagName: v__VERSION__
+          releaseName: Backtest Studio v__VERSION__
+          releaseBody: |
+            Linux: download the `.AppImage`, make it executable, run it.
+            Windows: run the `-setup.exe`. Windows shows "unknown publisher" (the app isn't code-signed); choose More info → Run anyway.
+            Installed copies update themselves from here.
+          releaseDraft: ${{ github.ref_type != 'tag' }}
+          includeUpdaterJson: true

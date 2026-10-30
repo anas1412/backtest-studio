@@ -54,6 +54,9 @@ tools/live.sh stop           stop live trading
 tools/live.sh status         what is trading live, if anything
 ```
 
+On Windows with cmd or PowerShell, use the same commands as `tools\compile.cmd <name>`
+and so on.
+
 `backtest.sh` prints the key stats and the run id. If it says MT5 is open,
 tell the user to close the MetaTrader 5 window and ask again; do not retry in
 a loop. If it says another backtest is running, wait for the user.
@@ -102,11 +105,12 @@ leaves open positions open; tell the user so.
 
 ## Session times and daylight saving
 
-Tester times are **broker server time**. This broker (FTMO-Demo) runs UTC+2
-in winter and UTC+3 in summer, switching on the **US** DST dates: its clock
-is New York + 7h. Verified 2026-10-30 from XAUUSD data: the weekly open sits
-at 01:00 broker time in every week, including the weeks when US and UK DST
-disagree. So "London 08:00" is not a fixed broker hour: it moves when the UK
+Tester times are **broker server time**. Many MT5 brokers (FTMO and most
+prop firms among them) run UTC+2 in winter and UTC+3 in summer, switching on
+the **US** DST dates: their clock is New York + 7h, so the trading day starts
+at 17:00 New York. The user's broker may differ, which is why the offset and
+DST rule are inputs (`InpWinterOffset`, `InpFollowsUSDST`) rather than
+constants. So "London 08:00" is not a fixed broker hour: it moves when the UK
 and US switch on different weekends (about 3 weeks in March, 1 in Oct/Nov).
 
 Never hardcode session hours in broker time. Use `<Studio/TimeZones.mqh>`

@@ -13,7 +13,16 @@
       "tools/backtest.sh *": "allow",
       "./tools/backtest.sh *": "allow",
       "tools/live.sh *": "allow",
-      "./tools/live.sh *": "allow"
+      "./tools/live.sh *": "allow",
+      "tools\\compile.cmd *": "allow",
+      "tools/compile.cmd *": "allow",
+      ".\\tools\\compile.cmd *": "allow",
+      "tools\\backtest.cmd *": "allow",
+      "tools/backtest.cmd *": "allow",
+      ".\\tools\\backtest.cmd *": "allow",
+      "tools\\live.cmd *": "allow",
+      "tools/live.cmd *": "allow",
+      ".\\tools\\live.cmd *": "allow"
     },
     "external_directory": "deny",
     "webfetch": "deny",

@@ -2,7 +2,11 @@
   "name": "backtest-studio",
   "private": true,
   "scripts": {
-    "start": "bun server/main.ts"
+    "start": "bun server/main.ts",
+    "build:web": "bun run --cwd web build",
+    "build:sidecar": "bun scripts/build-sidecar.ts",
+    "build:desktop": "bun run build:web && bun run build:sidecar",
+    "tauri": "cd desktop && tauri"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.92",
@@ -13,5 +17,9 @@
     "@openrouter/ai-sdk-provider": "^3.1.0",
     "ai": "^7.0.157",
     "zod": "^4.6.7"
+  },
+  "version": "0.1.0",
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
   }
 }

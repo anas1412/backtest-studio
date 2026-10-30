@@ -1,5 +1,7 @@
 import { join, normalize } from "node:path";
-import { WEB } from "./paths";
+import { WEB_DIST as DIST } from "./paths";
+import { syncTemplate } from "./template";
+import { ensureLinks } from "./links";
 import { subscribe, broadcast } from "./events";
 import * as chat from "./chat";
 import { engineStatuses } from "./engines/registry";
@@ -13,11 +15,16 @@ import { busyWith } from "./mt5";
 import { terminalRunning, startMt5Detached } from "./platform";
 import { scanInstalls, accounts, select, mt5Dir, selectedAccount, lastLogin } from "./install";
 import { linked } from "./links";
-import { rmSync } from "node:fs";
+import { rmSync, existsSync } from "node:fs";
 import { LIVE_FILE } from "./paths";
 
 const PORT = Number(process.env.PORT ?? 4747);
-const DIST = join(WEB, "dist");
+syncTemplate();
+// point MT5 at this workspace: the desktop app and a source checkout each have
+// their own, and whichever runs links MT5 to itself
+if (existsSync(join(mt5Dir(), "terminal64.exe"))) {
+  try { ensureLinks(mt5Dir()); } catch (e) { console.error((e as Error).message); }
+}
 startWatching();
 
 // Live status to the pages; if MT5 was closed by hand, live trading ended.
@@ -42,7 +49,7 @@ function saveEdits(name: string, settings?: Record<string, string>, inputs?: Rec
   return null;
 }
 
-Bun.serve({
+const server = Bun.serve({
   port: PORT,
   hostname: "127.0.0.1",
   idleTimeout: 0, // SSE stays open
@@ -186,4 +193,6 @@ Bun.serve({
   },
 });
 
-console.log(`Backtest Studio on http://127.0.0.1:${PORT}`);
+// PORT=0 picks a free port; the desktop app waits for this line to open its window
+console.log(`READY ${server.port}`);
+console.log(`Backtest Studio on http://127.0.0.1:${server.port}`);

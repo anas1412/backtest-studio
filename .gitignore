@@ -4,3 +4,6 @@ node_modules/
 *.log
 workspace/.studio/
 web/dist/
+desktop/target/
+desktop/binaries/
+desktop/gen/

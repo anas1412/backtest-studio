@@ -6,6 +6,7 @@ import { useStudio } from "@/lib/api";
 import { ChatPanel } from "@/features/chat/ChatPanel";
 import { Workspace } from "@/features/results/Workspace";
 import { NewStrategySheet } from "@/features/shell/NewStrategySheet";
+import { UpdateCard } from "@/features/shell/UpdateCard";
 import { useLocalNumber, useMediaQuery } from "@/hooks/use-layout";
 
 export default function App() {
@@ -119,6 +120,7 @@ export default function App() {
         </main>
       )}
 
+      <UpdateCard />
       {notice && (
         <VelocityToast key={notice.id} open={toastOpen} onDismiss={() => setToastOpen(false)}
           title={notice.title} description={notice.description} position="bottom-right" duration={6000}

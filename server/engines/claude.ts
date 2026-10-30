@@ -8,6 +8,8 @@ const ALLOWED = [
   "Bash(tools/compile.sh:*)", "Bash(./tools/compile.sh:*)",
   "Bash(tools/backtest.sh:*)", "Bash(./tools/backtest.sh:*)",
   "Bash(tools/live.sh:*)", "Bash(./tools/live.sh:*)",
+  // Windows: the cmd twins
+  "Bash(tools/compile.cmd:*)", "Bash(tools/backtest.cmd:*)", "Bash(tools/live.cmd:*)",
 ];
 const EFFORTS = ["low", "medium", "high", "xhigh", "max"];
 const MODELS = [

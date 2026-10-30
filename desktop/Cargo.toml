@@ -1,0 +1,23 @@
+[package]
+name = "backtest-studio"
+version = "0.1.0"
+description = "Backtest Studio: write, backtest and run MT5 strategies with AI"
+authors = ["anas1412"]
+license = "MIT"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
+tauri-plugin-single-instance = "2"
+serde_json = "1"
+
+[profile.release]
+codegen-units = 4
+lto = "thin"
+strip = true
