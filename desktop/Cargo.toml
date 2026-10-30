@@ -1,6 +1,6 @@
 [package]
 name = "backtest-studio"
-version = "0.1.3"
+version = "0.1.4"
 description = "Backtest Studio: write, backtest and run MT5 strategies with AI"
 authors = ["anas1412"]
 license = "MIT"
