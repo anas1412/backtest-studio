@@ -56,7 +56,13 @@ Desktop app: `bun run tauri dev`, or `bun run tauri build` for an installer of t
 
 ## Releasing
 
-Add notes under "Unreleased" in [CHANGELOG.md](CHANGELOG.md), then `scripts/release.sh 0.2.0` files them under the
-version, sets the version, tags and pushes; the *Release* workflow builds the AppImage and the Windows
-installer, signs them for the updater, and publishes them with that version's notes. The signing key is the repository secret
-`TAURI_SIGNING_PRIVATE_KEY` (+ `_PASSWORD`); keep a copy, without it installed apps can't take new updates.
+1. Add notes under **Unreleased** in [CHANGELOG.md](CHANGELOG.md) as you go.
+2. `scripts/release.sh 0.2.0` (Bash; on Windows use Git Bash or WSL). It refuses uncommitted changes or empty notes,
+   files the notes under the version, sets the version everywhere, commits, tags and pushes.
+3. The *Release* workflow builds the Windows installer and the Linux AppImage, signs them for the updater, uploads
+   fixed-name copies for the download links, and only then publishes the release, with that version's notes. Installed
+   apps show the same notes when they offer the update. A manual run of the workflow builds a draft instead.
+
+The signing key is the repository secret `TAURI_SIGNING_PRIVATE_KEY` (+ `_PASSWORD`); keep a copy, without it installed
+apps can't take new updates. A fork that publishes its own builds needs its own key (`bunx tauri signer generate`), its
+public key and `latest.json` URL in `desktop/tauri.conf.json`, and the private key as its repository's secrets.

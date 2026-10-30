@@ -55,10 +55,7 @@ export default defineConfig({
       },
       {
         text: "Development",
-        items: [
-          { text: "Build from source", link: "/reference/development" },
-          { text: "Releasing", link: "/reference/releasing" },
-        ],
+        items: [{ text: "Build from source", link: "/reference/development" }],
       },
       { text: "Changelog", link: "/changelog" },
     ],
