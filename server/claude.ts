@@ -4,19 +4,23 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import type { Subprocess } from "bun";
-import { WORKSPACE } from "./paths";
+import { WORKSPACE, STUDIO_DIR as DIR } from "./paths";
 import { broadcast } from "./events";
 
-const DIR = join(WORKSPACE, ".studio");
 const INDEX = join(DIR, "threads.json");
+const SETTINGS = join(DIR, "chat-settings.json");
 const ALLOWED = [
   "Read", "Write", "Edit", "Glob", "Grep",
   "Bash(tools/compile.sh:*)", "Bash(./tools/compile.sh:*)",
   "Bash(tools/backtest.sh:*)", "Bash(./tools/backtest.sh:*)",
 ];
 
+export const MODELS = ["opus", "sonnet", "haiku", "fable"] as const;
+export const EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
+export type ChatSettings = { model: (typeof MODELS)[number]; effort: (typeof EFFORTS)[number] };
+
 export type ChatEvent =
-  | { kind: "user"; text: string }
+  | { kind: "user"; text: string; model?: string; effort?: string }
   | { kind: "text"; text: string }
   | { kind: "tool"; id: string; name: string; input: unknown }
   | { kind: "tool_result"; id: string; output: string; error: boolean }
@@ -28,6 +32,21 @@ mkdirSync(join(DIR, "threads"), { recursive: true });
 let threads: Thread[] = existsSync(INDEX) ? JSON.parse(readFileSync(INDEX, "utf8")) : [];
 const cache = new Map<string, ChatEvent[]>();
 let proc: Subprocess | null = null;
+// Passed explicitly on every call so the studio never inherits the CLI's own
+// default model (which may be a small one).
+let settings: ChatSettings = existsSync(SETTINGS)
+  ? JSON.parse(readFileSync(SETTINGS, "utf8"))
+  : { model: "opus", effort: "high" };
+
+export const chatSettings = () => settings;
+export function setChatSettings(next: Partial<ChatSettings>): string | null {
+  if (next.model && !MODELS.includes(next.model)) return "Unknown model";
+  if (next.effort && !EFFORTS.includes(next.effort)) return "Unknown effort";
+  settings = { ...settings, ...next };
+  writeFileSync(SETTINGS, JSON.stringify(settings));
+  broadcast("chat-settings", settings);
+  return null;
+}
 let busyThread: string | null = null;
 
 const eventsFile = (id: string) => join(DIR, "threads", `${id}.json`);
@@ -85,11 +104,13 @@ export async function send(threadId: string, message: string) {
     saveIndex();
     broadcast("threads", listThreads());
   }
-  emit({ kind: "user", text: message });
+  const { model, effort } = settings;
+  emit({ kind: "user", text: message, model, effort });
 
   // prompt goes in on stdin, so a message starting with "-" is never read as a flag
   const args = ["claude", "-p", "--output-format", "stream-json", "--verbose",
-    "--include-partial-messages", "--permission-mode", "acceptEdits", "--allowedTools", ...ALLOWED];
+    "--include-partial-messages", "--model", model, "--effort", effort,
+    "--permission-mode", "acceptEdits", "--allowedTools", ...ALLOWED];
   if (thread.sessionId) args.push("--resume", thread.sessionId);
 
   proc = Bun.spawn(args, { cwd: WORKSPACE, stdout: "pipe", stderr: "pipe", stdin: Buffer.from(message) });

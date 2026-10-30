@@ -553,12 +553,15 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
 export interface ChatComposerProps {
   placeholder?: string;
   allowAttachments?: boolean;
+  /** Controls shown left of Send, in place of the keyboard hint */
+  toolbar?: React.ReactNode;
   className?: string;
 }
 
 export const ChatComposer: React.FC<ChatComposerProps> = ({
   placeholder = 'Ask a question or type a message...',
   allowAttachments = true,
+  toolbar,
   className,
 }) => {
   const { onSendMessage, isGenerating, accentColor } = useChat();
@@ -680,9 +683,11 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
               </>
             )}
 
-            <span className="text-[10px] font-sans text-text-muted hidden sm:inline">
-              Return to send, Shift+Return for newline
-            </span>
+            {toolbar ?? (
+              <span className="text-[10px] font-sans text-text-muted hidden sm:inline">
+                Return to send, Shift+Return for newline
+              </span>
+            )}
           </div>
 
           <motion.button

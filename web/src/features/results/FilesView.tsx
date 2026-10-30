@@ -1,21 +1,24 @@
 import { useEffect, useState } from "react";
 import { CodeBlock } from "@/components/ui/ai-response";
 import { SkeletonText } from "@/components/ui/skeleton";
-import { api } from "@/lib/api";
+import { api, useStudio } from "@/lib/api";
 
 type Files = { source: string; ini: string; log: string };
 
-function useFiles(runId: string) {
+// A run's saved copy, or (runId null) the strategy as it is now.
+function useFiles(runId: string | null, strategy?: string) {
+  const version = useStudio((s) => s.strategiesVersion);
   const [files, setFiles] = useState<Files | null>(null);
   useEffect(() => {
     setFiles(null);
-    api.runFiles(runId).then(setFiles).catch(() => setFiles({ source: "", ini: "", log: "" }));
-  }, [runId]);
+    const load = runId ? api.runFiles(runId) : api.strategyFiles(strategy ?? "");
+    load.then(setFiles).catch(() => setFiles({ source: "", ini: "", log: "" }));
+  }, [runId, strategy, runId ? 0 : version]);
   return files;
 }
 
-export function CodeView({ runId, strategy }: { runId: string; strategy: string }) {
-  const f = useFiles(runId);
+export function CodeView({ runId, strategy }: { runId: string | null; strategy: string }) {
+  const f = useFiles(runId, strategy);
   if (!f) return <SkeletonText lines={8} />;
   return (
     <div>

@@ -1,22 +1,26 @@
 // One SSE connection feeds a small external store; components read slices
 // of it with useStudio(). Chat events also go to per-thread listeners.
 import { useSyncExternalStore } from "react";
-import type { ChatEvent, Mt5State, Run, RunMeta, Thread } from "./types";
+import type { ChatEvent, ChatSettings, Mt5State, Run, RunMeta, Settings, SymbolList, Thread } from "./types";
 
 export type RunSummary = RunMeta & { net?: string; pf?: string; trades?: string; win?: string; dd?: string };
 export type Notice = { id: number; tone: "success" | "error" | "warning" | "info"; title: string; description?: string; runId?: string };
 
 type State = {
   connected: boolean;
+  loaded: boolean; // first full state received from the server
+  strategiesVersion: number; // bumps on any change under strategies/ (Claude edits)
   threads: Thread[];
   busyThread: string | null;
   runs: RunSummary[];
   strategies: string[];
   mt5: Mt5State;
   notice: Notice | null;
+  chatSettings: ChatSettings;
 };
 
-let state: State = { connected: false, threads: [], busyThread: null, runs: [], strategies: [], mt5: "ready", notice: null };
+let state: State = { connected: false, loaded: false, strategiesVersion: 0, threads: [], busyThread: null, runs: [], strategies: [], mt5: "ready", notice: null,
+  chatSettings: { model: "opus", effort: "high" } };
 const listeners = new Set<() => void>();
 const chatListeners = new Set<(threadId: string, e: ChatEvent) => void>();
 let noticeId = 0;
@@ -56,10 +60,11 @@ export function connect() {
           : { tone: "error", title: `Backtest failed · ${r.strategy}`, description: r.error });
       }
     }
-    set({ runs });
+    set({ runs, loaded: true });
   });
-  on<string[]>("strategies", (strategies) => set({ strategies }));
+  on<string[]>("strategies", (strategies) => set({ strategies, strategiesVersion: state.strategiesVersion + 1 }));
   on<Mt5State>("mt5", (mt5) => set({ mt5 }));
+  on<ChatSettings>("chat-settings", (chatSettings) => set({ chatSettings }));
   on<{ threadId: string; event: ChatEvent }>("chat", ({ threadId, event }) => chatListeners.forEach((l) => l(threadId, event)));
   on<Omit<Notice, "id">>("notice", notify);
 }
@@ -77,10 +82,15 @@ const post = (url: string, body?: unknown) =>
 export const api = {
   run: (id: string) => call<Run>(`/api/runs/${encodeURIComponent(id)}`),
   runFiles: (id: string) => call<{ source: string; ini: string; log: string }>(`/api/runs/${encodeURIComponent(id)}/files`),
+  strategyFiles: (name: string) => call<{ source: string; ini: string; log: string }>(`/api/strategies/${name}/files`),
   thread: (id: string) => call<ChatEvent[]>(`/api/threads/${id}`),
   newThread: () => post("/api/threads") as Promise<Thread>,
   deleteThread: (id: string) => call(`/api/threads/${id}`, { method: "DELETE" }),
   send: (threadId: string, message: string) => post("/api/chat", { threadId, message }),
   stop: () => post("/api/chat/stop"),
-  backtest: (strategy: string) => post(`/api/strategies/${strategy}/backtest`),
+  backtest: (strategy: string, settings?: Settings) => post(`/api/strategies/${strategy}/backtest`, settings ? { settings } : undefined),
+  settings: (strategy: string) => call<Settings>(`/api/strategies/${strategy}/settings`),
+  symbols: () => call<SymbolList>("/api/symbols"),
+  refreshSymbols: () => post("/api/symbols/refresh"),
+  setChatSettings: (s: Partial<ChatSettings>) => post("/api/chat/settings", s),
 };

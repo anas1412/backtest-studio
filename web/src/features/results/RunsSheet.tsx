@@ -4,16 +4,17 @@ import { useStudio } from "@/lib/api";
 import { num, runTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-export function RunsSheet({ open, onOpenChange, current, onPick }: {
-  open: boolean; onOpenChange: (o: boolean) => void; current: string | null; onPick: (id: string) => void;
+export function RunsSheet({ strategy, open, onOpenChange, current, onPick }: {
+  strategy: string; open: boolean; onOpenChange: (o: boolean) => void; current: string | null; onPick: (id: string) => void;
 }) {
-  const runs = useStudio((s) => s.runs);
+  const all = useStudio((s) => s.runs);
+  const runs = all.filter((r) => r.strategy === strategy);
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right">
         <SheetHeader>
-          <SheetTitle>Runs</SheetTitle>
-          <SheetDescription>Every backtest, newest first.</SheetDescription>
+          <SheetTitle>Runs of {strategy}</SheetTitle>
+          <SheetDescription>Newest first. Each run keeps the code and settings it used.</SheetDescription>
         </SheetHeader>
         <SheetBody className="space-y-1.5">
           {runs.map((r) => {

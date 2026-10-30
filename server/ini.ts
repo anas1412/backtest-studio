@@ -33,3 +33,29 @@ export function writeIni(ini: Ini): string {
   }
   return out.join("\r\n");
 }
+
+// Changes keys in one section of a file someone else wrote (Claude), keeping
+// its comments and order. Missing keys go at the end of the section.
+export function setKeys(text: string, section: string, values: Record<string, string>): string {
+  const lines = text.split(/\r?\n/);
+  const todo = new Map(Object.entries(values));
+  let current = "";
+  let end = -1; // last line index inside the section
+  for (let i = 0; i < lines.length; i++) {
+    const head = lines[i].trim().match(/^\[(.+)\]$/);
+    if (head) { current = head[1]; continue; }
+    if (current !== section) continue;
+    if (lines[i].trim()) end = i;
+    const m = lines[i].match(/^(\s*)([^;=\s][^=]*?)(\s*=\s*)([^;]*?)(\s*;.*)?$/);
+    if (m && todo.has(m[2])) {
+      lines[i] = `${m[1]}${m[2]}${m[3]}${todo.get(m[2])}${m[5] ?? ""}`;
+      todo.delete(m[2]);
+    }
+  }
+  const extra = [...todo].map(([k, v]) => `${k}=${v}`);
+  if (extra.length) {
+    if (end < 0) lines.unshift(`[${section}]`, ...extra, "");
+    else lines.splice(end + 1, 0, ...extra);
+  }
+  return lines.join("\n");
+}

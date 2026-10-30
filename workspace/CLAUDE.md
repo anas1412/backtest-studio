@@ -68,6 +68,34 @@ a loop. If it says another backtest is running, wait for the user.
   server time.
 - Fix every compile error before backtesting.
 
+## Session times and daylight saving
+
+Tester times are **broker server time**. This broker (FTMO-Demo) runs UTC+2
+in winter and UTC+3 in summer, switching on the **US** DST dates: its clock
+is New York + 7h. Verified 2026-10-30 from XAUUSD data: the weekly open sits
+at 01:00 broker time in every week, including the weeks when US and UK DST
+disagree. So "London 08:00" is not a fixed broker hour: it moves when the UK
+and US switch on different weekends (about 3 weeks in March, 1 in Oct/Nov).
+
+Never hardcode session hours in broker time. Use `<Studio/TimeZones.mqh>`
+(source: `tools/include/TimeZones.mqh`, checked hour by hour for 2021-2027
+against the IANA tz database by `tools/check_timezones.py`):
+
+```mql5
+#include <Studio/TimeZones.mqh>
+input int  InpWinterOffset = 2;     // broker hours ahead of UTC in winter
+input bool InpFollowsUSDST = true;  // broker switches on US dates (false = EU)
+
+// broker time at which today's London 08:00 session opens
+datetime open = SessionStartInBrokerTime(TimeCurrent(), TZ_LONDON, 8, 0,
+                                         InpWinterOffset, InpFollowsUSDST);
+// also: TZ_NEWYORK, TZ_TOKYO, TZ_SYDNEY, TZ_UTC; BrokerToUTC(), UTCToBroker()
+```
+
+London follows UK/EU DST and New York US DST; the include handles both. When
+the user names a session time, say which zone you used. Do not edit the
+include; if it needs a change, tell the user.
+
 ## Reporting back
 
 After a backtest, give a short read of the result in plain words (net profit,

@@ -30,11 +30,12 @@ void OnDeinit(const int reason)
       PrintFormat("StudioBars: cannot open file: %d", GetLastError());
       return;
      }
-   FileWrite(f, "time", "open", "high", "low", "close");
+   FileWrite(f, "time", "open", "high", "low", "close", "spread");
    for(int i = 0; i < n; i++)
       FileWrite(f, TimeToString(b[i].time, TIME_DATE|TIME_MINUTES),
                 DoubleToString(b[i].open, _Digits), DoubleToString(b[i].high, _Digits),
-                DoubleToString(b[i].low, _Digits), DoubleToString(b[i].close, _Digits));
+                DoubleToString(b[i].low, _Digits), DoubleToString(b[i].close, _Digits),
+                IntegerToString(b[i].spread));
    FileClose(f);
    PrintFormat("StudioBars: wrote %d bars", n);
   }

@@ -4,7 +4,7 @@ import type { ActivityStatus, AgentActivityItemData } from "@/components/ui/ai-a
 import type { ChatEvent } from "@/lib/types";
 
 export type Item =
-  | { kind: "user"; key: string; text: string }
+  | { kind: "user"; key: string; text: string; model?: string; effort?: string }
   | { kind: "assistant"; key: string; text: string }
   | { kind: "tools"; key: string; steps: AgentActivityItemData[] }
   | { kind: "run"; key: string; runId: string }
@@ -49,7 +49,7 @@ export function buildTranscript(events: ChatEvent[], live: boolean): Item[] {
     const key = String(i);
     switch (e.kind) {
       case "user":
-        items.push({ kind: "user", key, text: e.text });
+        items.push({ kind: "user", key, text: e.text, model: e.model, effort: e.effort });
         break;
       case "text":
         if (last?.kind === "assistant") last.text += e.text;

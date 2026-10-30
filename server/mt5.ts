@@ -7,7 +7,7 @@
 // run refuses to start while the MT5 GUI is open.
 import { existsSync, readFileSync, writeFileSync, mkdirSync, copyFileSync, rmSync, statSync, readdirSync, openSync, closeSync } from "node:fs";
 import { join } from "node:path";
-import { MT5_DIR, WINEPREFIX, STRATEGIES, RUNS, BARS_CACHE, COMMON_FILES } from "./paths";
+import { MT5_DIR, WINEPREFIX, STRATEGIES, RUNS, BARS_CACHE, COMMON_FILES, TOOLS_MQL5 } from "./paths";
 import { parseIni, writeIni } from "./ini";
 import { parseReport } from "./report";
 
@@ -30,9 +30,9 @@ async function wine(args: string[]): Promise<number> {
   return p.exited;
 }
 
-export async function compile(path: string): Promise<{ ok: boolean; output: string }> {
-  // path is relative to MQL5/Experts, e.g. "Studio/ma_cross/ma_cross.mq5"
-  const rel = `MQL5/Experts/${path}`;
+export async function compile(path: string, root = "MQL5/Experts"): Promise<{ ok: boolean; output: string }> {
+  // path is relative to root, e.g. "Studio/ma_cross/ma_cross.mq5"
+  const rel = `${root}/${path}`;
   const src = join(MT5_DIR, rel);
   if (!existsSync(src)) return { ok: false, output: `No source at ${rel}` };
   const log = src.replace(/\.mq5$/, ".log");
@@ -44,18 +44,24 @@ export async function compile(path: string): Promise<{ ok: boolean; output: stri
   return { ok: /\b0 errors?\b/i.test(result), output: lines.join("\n") };
 }
 
-export function testing(): boolean {
-  if (!existsSync(LOCK)) return false;
-  const pid = Number(readFileSync(LOCK, "utf8"));
-  return !!pid && Bun.spawnSync(["kill", "-0", String(pid)]).exitCode === 0;
-}
+export type LockPurpose = "backtest" | "symbols";
 
-function lock(): boolean {
+// What the studio is using MT5 for right now, or null. The lock holds the
+// owner's pid, so a crashed run doesn't block the next one.
+export function busyWith(): LockPurpose | null {
+  if (!existsSync(LOCK)) return null;
+  const [pid, purpose] = readFileSync(LOCK, "utf8").split(" ");
+  if (!Number(pid) || Bun.spawnSync(["kill", "-0", pid]).exitCode !== 0) return null;
+  return purpose === "symbols" ? "symbols" : "backtest";
+}
+export const testing = () => busyWith() !== null;
+
+export function lock(purpose: LockPurpose = "backtest"): boolean {
   mkdirSync(RUNS, { recursive: true });
   if (testing()) return false;
   rmSync(LOCK, { force: true });
   const fd = openSync(LOCK, "wx");
-  writeFileSync(fd, String(process.pid));
+  writeFileSync(fd, `${process.pid} ${purpose}`);
   closeSync(fd);
   return true;
 }
@@ -66,9 +72,17 @@ function runId(name: string): string {
   return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}-${name}`;
 }
 
-async function runTester(iniText: string): Promise<void> {
+export const unlock = () => rmSync(LOCK, { force: true });
+
+// Starts the terminal with a config and waits for it to shut itself down.
+// timeoutMs is a backstop for runs that can hang (no broker connection).
+export async function runTerminal(iniText: string, timeoutMs?: number): Promise<void> {
   writeFileSync(join(MT5_DIR, "studio_run.ini"), iniText);
-  await wine(["terminal64.exe", "/portable", "/config:studio_run.ini"]);
+  const run = wine(["terminal64.exe", "/portable", "/config:studio_run.ini"]);
+  if (!timeoutMs) return void (await run);
+  const timer = setTimeout(() => Bun.spawnSync(["pkill", "-f", "terminal6[4].exe"]), timeoutMs);
+  await run;
+  clearTimeout(timer);
 }
 
 function testerLogTail(since: number): string {
@@ -86,9 +100,11 @@ function testerLogTail(since: number): string {
 
 async function bars(tester: Map<string, string>): Promise<string | null> {
   const key = ["Symbol", "Period", "FromDate", "ToDate"].map((k) => tester.get(k) ?? "").join("_").replace(/[^\w.-]/g, "");
-  const cached = join(BARS_CACHE, `${key}.csv`);
+  const cached = join(BARS_CACHE, `v2_${key}.csv`);
   if (existsSync(cached)) return cached;
-  if (!existsSync(join(MT5_DIR, "MQL5/Experts/StudioTools/StudioBars.ex5"))) {
+  // rebuild when missing or older than its source (the export format changes with it)
+  const ex5 = join(MT5_DIR, "MQL5/Experts/StudioTools/StudioBars.ex5");
+  if (!existsSync(ex5) || statSync(ex5).mtimeMs < statSync(join(TOOLS_MQL5, "StudioBars.mq5")).mtimeMs) {
     const c = await compile("StudioTools/StudioBars.mq5");
     if (!c.ok) return null;
   }
@@ -105,15 +121,18 @@ async function bars(tester: Map<string, string>): Promise<string | null> {
   ]));
   const out = join(COMMON_FILES, BARS_FILE);
   rmSync(out, { force: true });
-  await runTester(writeIni(ini));
+  await runTerminal(writeIni(ini));
   if (!existsSync(out)) return null;
   mkdirSync(BARS_CACHE, { recursive: true });
   copyFileSync(out, cached);
   return cached;
 }
 
+// compile happens before a run exists; these are the stages after it
+export type Stage = "tester" | "report" | "bars";
+
 export type Meta = {
-  id: string; strategy: string; status: "running" | "done" | "failed";
+  id: string; strategy: string; status: "running" | "done" | "failed"; stage?: Stage;
   started: string; finished?: string; error?: string; tester: Record<string, string>;
 };
 
@@ -137,7 +156,7 @@ export async function backtest(name: string): Promise<{ meta: Meta; dir: string;
   tester.set("Optimization", "0");
   tester.set("Visual", "0");
 
-  const meta: Meta = { id, strategy: name, status: "running", started: new Date().toISOString(), tester: Object.fromEntries(tester) };
+  const meta: Meta = { id, strategy: name, status: "running", stage: "tester", started: new Date().toISOString(), tester: Object.fromEntries(tester) };
   const saveMeta = () => writeFileSync(join(dir, "meta.json"), JSON.stringify(meta, null, 2));
   saveMeta();
   copyFileSync(join(dir0, `${name}.mq5`), join(dir, `${name}.mq5`));
@@ -148,23 +167,28 @@ export async function backtest(name: string): Promise<{ meta: Meta; dir: string;
   try {
     rmSync(report, { force: true });
     const t0 = Date.now();
-    await runTester(writeIni(ini));
+    await runTerminal(writeIni(ini));
     log = testerLogTail(t0);
     writeFileSync(join(dir, "tester.log"), log);
     if (!existsSync(report)) throw new Error("Tester produced no report -- see tester.log");
+    meta.stage = "report";
+    saveMeta();
     const html = utf16(report);
     writeFileSync(join(dir, "report.htm"), html);
     writeFileSync(join(dir, "result.json"), JSON.stringify(parseReport(html)));
+    meta.stage = "bars";
+    saveMeta();
     const b = await bars(tester);
     if (b) copyFileSync(b, join(dir, "bars.csv"));
     meta.status = "done";
+    delete meta.stage;
   } catch (e) {
     meta.status = "failed";
     meta.error = (e as Error).message;
   } finally {
     meta.finished = new Date().toISOString();
     saveMeta();
-    rmSync(LOCK, { force: true });
+    unlock();
   }
   return { meta, dir, log };
 }

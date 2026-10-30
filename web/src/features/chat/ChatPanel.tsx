@@ -10,6 +10,8 @@ import type { ChatEvent, Thread } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { buildTranscript } from "./transcript";
 import { RunCard } from "./RunCard";
+import { ModelPicker, MODEL_LABELS } from "./ModelPicker";
+import { ChatSkeleton } from "@/features/shell/Skeletons";
 
 function group(t: Thread): string {
   const days = Math.floor((Date.now() - new Date(t.created).getTime()) / 86_400_000);
@@ -39,12 +41,16 @@ export function ChatPanel({ threadId, onThread, runId, onOpenRun }: {
   const threads = useStudio((s) => s.threads);
   const busyThread = useStudio((s) => s.busyThread);
   const [events, setEvents] = useState<ChatEvent[]>([]);
+  const [loadingThread, setLoadingThread] = useState(false);
+  const loaded = useStudio((s) => s.loaded);
   const bottom = useRef<HTMLDivElement>(null);
   const live = busyThread === threadId && threadId !== null;
 
   useEffect(() => {
     setEvents([]);
-    if (threadId) api.thread(threadId).then(setEvents).catch(() => setEvents([]));
+    if (!threadId) return;
+    setLoadingThread(true);
+    api.thread(threadId).then(setEvents).catch(() => setEvents([])).finally(() => setLoadingThread(false));
   }, [threadId]);
 
   useEffect(() => onChat((id, e) => { if (id === threadId) setEvents((prev) => [...prev, e]); }), [threadId]);
@@ -67,6 +73,10 @@ export function ChatPanel({ threadId, onThread, runId, onOpenRun }: {
 
   const chatThreads: ChatConversationThread[] = threads.map((t) => ({ id: t.id, title: t.title, timestamp: t.created, group: group(t) }));
   const lastAssistant = items.findLastIndex((i) => i.kind === "assistant");
+  // Claude is working but nothing is streaming or running: show it thinking
+  const last = items[items.length - 1];
+  const thinking = live && last && last.kind !== "assistant"
+    && !(last.kind === "tools" && last.steps.some((s) => s.status === "running"));
 
   return (
     <Chat
@@ -84,11 +94,12 @@ export function ChatPanel({ threadId, onThread, runId, onOpenRun }: {
         <div className="flex items-center border-b border-border">
           <ThreadsToggle />
           <ChatHeader className="flex-1 border-0" title={threads.find((t) => t.id === threadId)?.title ?? "New conversation"}
-            subtitle="Writes, compiles and backtests MQL5" modelBadge="claude -p" />
+            subtitle="Writes, compiles and backtests MQL5" />
         </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto p-4">
-          {items.length === 0 && (
+          {(!loaded || loadingThread) && <ChatSkeleton />}
+          {loaded && !loadingThread && items.length === 0 && (
             <div className="flex h-full flex-col items-center justify-center px-6 text-center">
               <ThinkingOrb size={64} state="breathing" />
               <h3 className="mt-4 text-sm font-semibold">What should we test?</h3>
@@ -100,10 +111,16 @@ export function ChatPanel({ threadId, onThread, runId, onOpenRun }: {
           {items.map((it, idx) => {
             switch (it.kind) {
               case "user":
-                return <ChatMessage key={it.key} message={{ id: it.key, role: "user", content: it.text }} />;
+                return (
+                  <ChatMessage key={it.key} message={{
+                    id: it.key, role: "user", content: it.text,
+                    // which model answered this message
+                    timestamp: it.model ? `${MODEL_LABELS[it.model] ?? it.model} · ${it.effort} effort` : "default model",
+                  }} />
+                );
               case "assistant":
                 return (
-                  <AIResponse key={it.key} content={it.text.trim()} modelName="Claude"
+                  <AIResponse key={it.key} content={it.text.trim()}
                     status={live && idx === lastAssistant ? "streaming" : "complete"} className="p-4 sm:p-4">
                     <AIResponseContent />
                   </AIResponse>
@@ -124,6 +141,11 @@ export function ChatPanel({ threadId, onThread, runId, onOpenRun }: {
                 );
             }
           })}
+          {thinking && (
+            <AIResponse status="generating" className="p-4 sm:p-4">
+              <AIResponseContent />
+            </AIResponse>
+          )}
           <div ref={bottom} />
         </div>
 
@@ -137,7 +159,7 @@ export function ChatPanel({ threadId, onThread, runId, onOpenRun }: {
             </button>
           </div>
         )}
-        <ChatComposer allowAttachments={false} placeholder="Describe a strategy or ask for a change…" />
+        <ChatComposer allowAttachments={false} placeholder="Describe a strategy or ask for a change…" toolbar={<ModelPicker />} />
       </div>
     </Chat>
   );

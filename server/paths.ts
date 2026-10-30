@@ -4,6 +4,7 @@ import { homedir } from "node:os";
 export const ROOT = resolve(import.meta.dir, "..");
 export const WORKSPACE = join(ROOT, "workspace");
 export const STRATEGIES = join(WORKSPACE, "strategies");
+export const STUDIO_DIR = join(WORKSPACE, ".studio"); // app state: threads, settings, symbol cache
 export const TOOLS_MQL5 = join(WORKSPACE, "tools", "mql5");
 export const RUNS = join(ROOT, "runs");
 export const BARS_CACHE = join(RUNS, "_bars");
