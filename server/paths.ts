@@ -1,0 +1,18 @@
+import { join, resolve } from "node:path";
+import { homedir } from "node:os";
+
+export const ROOT = resolve(import.meta.dir, "..");
+export const WORKSPACE = join(ROOT, "workspace");
+export const STRATEGIES = join(WORKSPACE, "strategies");
+export const TOOLS_MQL5 = join(WORKSPACE, "tools", "mql5");
+export const RUNS = join(ROOT, "runs");
+export const BARS_CACHE = join(RUNS, "_bars");
+export const WEB = join(ROOT, "web");
+
+export const WINEPREFIX = process.env.WINEPREFIX ?? join(homedir(), ".wine_mt5");
+export const MT5_DIR =
+  process.env.MT5_DIR ?? join(WINEPREFIX, "drive_c", "Program Files", "MetaTrader 5");
+export const COMMON_FILES = join(
+  WINEPREFIX, "drive_c", "users", process.env.USER ?? "", "AppData", "Roaming",
+  "MetaQuotes", "Terminal", "Common", "Files",
+);

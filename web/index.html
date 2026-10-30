@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Backtest Studio</title>
+    <script>
+      // dark unless the system asks for light; follows changes live
+      (() => {
+        const q = matchMedia("(prefers-color-scheme: light)");
+        const apply = () => document.documentElement.classList.toggle("dark", !q.matches);
+        apply();
+        q.addEventListener("change", apply);
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

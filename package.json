@@ -1,0 +1,5 @@
+{
+  "name": "backtest-studio",
+  "private": true,
+  "scripts": { "start": "bun server/main.ts" }
+}
