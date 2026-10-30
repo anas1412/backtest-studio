@@ -7,6 +7,8 @@ import { broadcast } from "./events";
 import { mt5Open, busyWith, compile, backtest } from "./mt5";
 import { parseBars } from "./report";
 import { parseIni, setKeys } from "./ini";
+import { saveInputs } from "./inputs";
+import { LIVE_FILE } from "./paths";
 
 const safe = (id: string) => /^[\w.-]+$/.test(id) && !id.startsWith("_");
 const read = (f: string) => (existsSync(f) ? readFileSync(f, "utf8") : "");
@@ -64,10 +66,11 @@ export function listStrategies(): string[] {
   return readdirSync(STRATEGIES).filter((d) => /^\w+$/.test(d) && existsSync(join(STRATEGIES, d, `${d}.mq5`))).sort();
 }
 
-export function mt5State(): "ready" | "testing" | "symbols" | "gui-open" {
+export function mt5State(): "ready" | "testing" | "symbols" | "live" | "gui-open" {
   // the studio's own terminal runs also show up as a terminal process
   const busy = busyWith();
   if (busy) return busy === "symbols" ? "symbols" : "testing";
+  if (existsSync(LIVE_FILE) && mt5Open()) return "live";
   return mt5Open() ? "gui-open" : "ready";
 }
 
@@ -82,7 +85,7 @@ export function getSettings(name: string): Record<string, string> | null {
   return Object.fromEntries(SETTING_KEYS.map((k) => [k, t.get(k) ?? ""]));
 }
 
-function saveSettings(name: string, values: Record<string, string>) {
+export function saveSettings(name: string, values: Record<string, string>) {
   const f = join(STRATEGIES, name, "tester.ini");
   const clean = Object.fromEntries(Object.entries(values)
     .filter(([k, v]) => (SETTING_KEYS as readonly string[]).includes(k) && /^[\w.:-]+$/.test(String(v))));
@@ -91,12 +94,14 @@ function saveSettings(name: string, values: Record<string, string>) {
 
 // Re-run from the UI. Preconditions answer right away; the run itself is
 // reported through the runs watcher like any other.
-export function rerun(name: string, settings?: Record<string, string>): string | null {
+export function rerun(name: string, settings?: Record<string, string>, inputs?: Record<string, string>): string | null {
   if (!listStrategies().includes(name)) return "No such strategy";
   const state = mt5State();
   if (state === "testing" || state === "symbols") return "MT5 is busy, wait for it to finish";
+  if (state === "live") return "A strategy is trading live; stop it before backtesting";
   if (state === "gui-open") return "Close MetaTrader 5 first";
   if (settings) saveSettings(name, settings);
+  if (inputs) saveInputs(name, inputs);
   (async () => {
     const c = await compile(`Studio/${name}/${name}.mq5`);
     if (!c.ok) {

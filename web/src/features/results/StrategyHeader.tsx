@@ -10,6 +10,7 @@ const MT5 = {
   ready: { tone: "success", label: "MT5 ready", pulse: false },
   testing: { tone: "warning", label: "Backtesting…", pulse: true },
   symbols: { tone: "warning", label: "Reading symbols…", pulse: true },
+  live: { tone: "success", label: "Trading live", pulse: true },
   "gui-open": { tone: "danger", label: "MT5 open · close to test", pulse: false },
 } as const;
 

@@ -1,7 +1,7 @@
 // One SSE connection feeds a small external store; components read slices
 // of it with useStudio(). Chat events also go to per-thread listeners.
 import { useSyncExternalStore } from "react";
-import type { ChatEvent, ChatSettings, Mt5State, Run, RunMeta, Settings, SymbolList, Thread } from "./types";
+import type { Account, RuleProfile, ChatEvent, ChatSettings, LiveStatus, Mt5State, Run, RunMeta, Settings, StrategyInput, SymbolList, Thread } from "./types";
 
 export type RunSummary = RunMeta & { net?: string; pf?: string; trades?: string; win?: string; dd?: string };
 export type Notice = { id: number; tone: "success" | "error" | "warning" | "info"; title: string; description?: string; runId?: string };
@@ -17,10 +17,11 @@ type State = {
   mt5: Mt5State;
   notice: Notice | null;
   chatSettings: ChatSettings;
+  live: LiveStatus | null;
 };
 
 let state: State = { connected: false, loaded: false, strategiesVersion: 0, threads: [], busyThread: null, runs: [], strategies: [], mt5: "ready", notice: null,
-  chatSettings: { model: "opus", effort: "high" } };
+  chatSettings: { model: "opus", effort: "high" }, live: null };
 const listeners = new Set<() => void>();
 const chatListeners = new Set<(threadId: string, e: ChatEvent) => void>();
 let noticeId = 0;
@@ -65,6 +66,7 @@ export function connect() {
   on<string[]>("strategies", (strategies) => set({ strategies, strategiesVersion: state.strategiesVersion + 1 }));
   on<Mt5State>("mt5", (mt5) => set({ mt5 }));
   on<ChatSettings>("chat-settings", (chatSettings) => set({ chatSettings }));
+  on<LiveStatus | null>("live", (live) => set({ live }));
   on<{ threadId: string; event: ChatEvent }>("chat", ({ threadId, event }) => chatListeners.forEach((l) => l(threadId, event)));
   on<Omit<Notice, "id">>("notice", notify);
 }
@@ -88,7 +90,16 @@ export const api = {
   deleteThread: (id: string) => call(`/api/threads/${id}`, { method: "DELETE" }),
   send: (threadId: string, message: string) => post("/api/chat", { threadId, message }),
   stop: () => post("/api/chat/stop"),
-  backtest: (strategy: string, settings?: Settings) => post(`/api/strategies/${strategy}/backtest`, settings ? { settings } : undefined),
+  backtest: (strategy: string, settings?: Settings, inputs?: Record<string, string>) =>
+    post(`/api/strategies/${strategy}/backtest`, settings || inputs ? { settings, inputs } : undefined),
+  inputs: (strategy: string) => call<StrategyInput[]>(`/api/strategies/${strategy}/inputs`),
+  live: () => call<{ status: LiveStatus | null; account: Account; log: string[] }>("/api/live"),
+  liveStart: (strategy: string, settings?: Settings, inputs?: Record<string, string>) =>
+    post("/api/live/start", { strategy, settings, inputs }),
+  liveStop: () => post("/api/live/stop"),
+  ruleProfiles: () => call<RuleProfile[]>("/api/rule-profiles"),
+  saveProfile: (p: RuleProfile) => post("/api/rule-profiles", p) as Promise<RuleProfile[]>,
+  deleteProfile: (name: string) => call<RuleProfile[]>(`/api/rule-profiles/${encodeURIComponent(name)}`, { method: "DELETE" }),
   settings: (strategy: string) => call<Settings>(`/api/strategies/${strategy}/settings`),
   symbols: () => call<SymbolList>("/api/symbols"),
   refreshSymbols: () => post("/api/symbols/refresh"),

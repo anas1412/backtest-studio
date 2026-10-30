@@ -22,13 +22,14 @@ export type RunMeta = {
 export type Run = {
   meta: RunMeta;
   avgSpread: number | null;
+  prop: PropCheck | null;
   summary: Record<string, string>;
   deals: Deal[];
   trades: Trade[];
   bars: Bar[];
 };
 
-export type Mt5State = "ready" | "testing" | "symbols" | "gui-open";
+export type Mt5State = "ready" | "testing" | "symbols" | "live" | "gui-open";
 
 export type ChatEvent =
   | { kind: "user"; text: string; model?: string; effort?: string }
@@ -52,3 +53,28 @@ export type SymbolInfo = {
   spread: number | null; history: [number, number] | null;
 };
 export type SymbolList = { server: string; refreshed: string | null; symbols: SymbolInfo[] };
+
+// an `input` line of the strategy's .mq5, with its current value
+export type StrategyInput = {
+  name: string; type: string; default: string; comment: string; value: string;
+  group: string; options?: { value: string; label: string }[];
+};
+
+export type RuleProfile = { name: string; values: Record<string, string> };
+
+// mirrors server/prop.ts
+export type PropCheck = {
+  size: number;
+  daily: { limitPct: number; worstPct: number; worstDay: string | null; breaches: string[] } | null;
+  maxLoss: { limitPct: number; type: number; worstPct: number; worstDay: string | null; breachDay: string | null } | null;
+  target: { pct: number; hitDay: string | null } | null;
+  tradingDays: number;
+  days: number;
+  passed: boolean;
+};
+
+export type LiveStatus = {
+  strategy: string; symbol: string; period: string; inputs: Record<string, string>;
+  started: string; login: string; server: string; running: boolean;
+};
+export type Account = { login: string; server: string; demo: boolean };

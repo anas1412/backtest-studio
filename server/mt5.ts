@@ -1,34 +1,29 @@
-// Drives the Wine MT5 install: compile with MetaEditor, run the Strategy
-// Tester headless, collect the report and the bars for the chart.
+// Drives the MT5 install (Wine on Linux, native on Windows; see platform.ts):
+// compile with MetaEditor, run the Strategy Tester headless, collect the
+// report and the bars for the chart.
 //
-// Known quirks (from ~/orb/strategy/scripts): MetaEditor needs a path relative
+// Known quirks: MetaEditor needs a path relative
 // to the terminal dir with cwd there, and returns 1 on a clean compile, so the
 // log decides. Logs and reports are UTF-16LE. One terminal per data dir, so a
 // run refuses to start while the MT5 GUI is open.
 import { existsSync, readFileSync, writeFileSync, mkdirSync, copyFileSync, rmSync, statSync, readdirSync, openSync, closeSync } from "node:fs";
 import { join } from "node:path";
-import { MT5_DIR, WINEPREFIX, STRATEGIES, RUNS, BARS_CACHE, COMMON_FILES, TOOLS_MQL5 } from "./paths";
+import { MT5_DIR, STRATEGIES, RUNS, BARS_CACHE, COMMON_FILES, TOOLS_MQL5, LIVE_FILE } from "./paths";
+import { runMt5, terminalRunning, killTerminal, pidAlive } from "./platform";
 import { parseIni, writeIni } from "./ini";
 import { parseReport } from "./report";
+import { propCheck } from "./prop";
 
-const ENV = { ...process.env, WINEPREFIX, WINEDEBUG: "-all" };
 const LOCK = join(RUNS, ".lock");
 const BARS_FILE = "studio_bars.csv";
+const DAILY_FILE = "studio_daily.csv"; // written by <Studio/Risk.mqh> in the tester
 
 export function utf16(path: string): string {
   const buf = readFileSync(path);
   return buf[0] === 0xff && buf[1] === 0xfe ? buf.toString("utf16le").slice(1) : buf.toString("utf8");
 }
 
-export function mt5Open(): boolean {
-  // bracket keeps pgrep from matching its own command line
-  return Bun.spawnSync(["pgrep", "-f", "terminal6[4].exe"]).exitCode === 0;
-}
-
-async function wine(args: string[]): Promise<number> {
-  const p = Bun.spawn(["wine", ...args], { cwd: MT5_DIR, env: ENV, stdout: "ignore", stderr: "ignore" });
-  return p.exited;
-}
+export const mt5Open = terminalRunning;
 
 export async function compile(path: string, root = "MQL5/Experts"): Promise<{ ok: boolean; output: string }> {
   // path is relative to root, e.g. "Studio/ma_cross/ma_cross.mq5"
@@ -37,7 +32,7 @@ export async function compile(path: string, root = "MQL5/Experts"): Promise<{ ok
   if (!existsSync(src)) return { ok: false, output: `No source at ${rel}` };
   const log = src.replace(/\.mq5$/, ".log");
   rmSync(log, { force: true });
-  await wine(["MetaEditor64.exe", `/compile:${rel.replaceAll("/", "\\")}`, "/log"]);
+  await runMt5("MetaEditor64.exe", [`/compile:${rel.replaceAll("/", "\\")}`, "/log"]);
   if (!existsSync(log)) return { ok: false, output: "MetaEditor wrote no log -- it never ran or the path was wrong" };
   const lines = utf16(log).split(/\r?\n/).filter((l) => /error|warning|result/i.test(l));
   const result = lines.find((l) => /^result/i.test(l)) ?? "";
@@ -51,7 +46,7 @@ export type LockPurpose = "backtest" | "symbols";
 export function busyWith(): LockPurpose | null {
   if (!existsSync(LOCK)) return null;
   const [pid, purpose] = readFileSync(LOCK, "utf8").split(" ");
-  if (!Number(pid) || Bun.spawnSync(["kill", "-0", pid]).exitCode !== 0) return null;
+  if (!Number(pid) || !pidAlive(Number(pid))) return null;
   return purpose === "symbols" ? "symbols" : "backtest";
 }
 export const testing = () => busyWith() !== null;
@@ -78,9 +73,9 @@ export const unlock = () => rmSync(LOCK, { force: true });
 // timeoutMs is a backstop for runs that can hang (no broker connection).
 export async function runTerminal(iniText: string, timeoutMs?: number): Promise<void> {
   writeFileSync(join(MT5_DIR, "studio_run.ini"), iniText);
-  const run = wine(["terminal64.exe", "/portable", "/config:studio_run.ini"]);
+  const run = runMt5("terminal64.exe", ["/portable", "/config:studio_run.ini"]);
   if (!timeoutMs) return void (await run);
-  const timer = setTimeout(() => Bun.spawnSync(["pkill", "-f", "terminal6[4].exe"]), timeoutMs);
+  const timer = setTimeout(killTerminal, timeoutMs);
   await run;
   clearTimeout(timer);
 }
@@ -140,6 +135,7 @@ export async function backtest(name: string): Promise<{ meta: Meta; dir: string;
   const dir0 = join(STRATEGIES, name);
   const iniPath = join(dir0, "tester.ini");
   if (!existsSync(iniPath)) throw new Error(`No ${name}/tester.ini`);
+  if (existsSync(LIVE_FILE) && mt5Open()) throw new Error("A strategy is trading live in MT5 -- stop it first (one terminal per data folder)");
   if (mt5Open()) throw new Error("MT5 is open -- close the MT5 terminal first (one terminal per data folder)");
   if (!lock()) throw new Error("Another backtest is running -- wait for it to finish");
 
@@ -166,6 +162,7 @@ export async function backtest(name: string): Promise<{ meta: Meta; dir: string;
   let log = "";
   try {
     rmSync(report, { force: true });
+    rmSync(join(COMMON_FILES, DAILY_FILE), { force: true });
     const t0 = Date.now();
     await runTerminal(writeIni(ini));
     log = testerLogTail(t0);
@@ -175,7 +172,13 @@ export async function backtest(name: string): Promise<{ meta: Meta; dir: string;
     saveMeta();
     const html = utf16(report);
     writeFileSync(join(dir, "report.htm"), html);
-    writeFileSync(join(dir, "result.json"), JSON.stringify(parseReport(html)));
+    const daily = join(COMMON_FILES, DAILY_FILE);
+    let prop = null;
+    if (existsSync(daily)) {
+      copyFileSync(daily, join(dir, "daily.csv"));
+      prop = propCheck(readFileSync(daily, "latin1"));
+    }
+    writeFileSync(join(dir, "result.json"), JSON.stringify({ ...parseReport(html), prop }));
     meta.stage = "bars";
     saveMeta();
     const b = await bars(tester);

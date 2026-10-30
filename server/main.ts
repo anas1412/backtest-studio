@@ -2,14 +2,41 @@ import { join, normalize } from "node:path";
 import { WEB } from "./paths";
 import { subscribe, broadcast } from "./events";
 import * as claude from "./claude";
-import { listRuns, getRun, getRunFiles, getStrategyFiles, listStrategies, getSettings, mt5State, rerun, startWatching } from "./runs";
+import { listRuns, getRun, getRunFiles, getStrategyFiles, listStrategies, getSettings, saveSettings, mt5State, rerun, startWatching } from "./runs";
 import { listSymbols, refreshSymbols } from "./symbols";
+import { getInputs, saveInputs } from "./inputs";
+import { listProfiles, putProfile, deleteProfile } from "./profiles";
+import { account, liveStatus, startLive, stopLive, liveLog } from "./live";
+import { busyWith } from "./mt5";
+import { terminalRunning } from "./platform";
+import { rmSync } from "node:fs";
+import { LIVE_FILE } from "./paths";
 
 const PORT = Number(process.env.PORT ?? 4747);
 const DIST = join(WEB, "dist");
 startWatching();
 
+// Live status to the pages; if MT5 was closed by hand, live trading ended.
+let lastLive = "";
+setInterval(() => {
+  const st = liveStatus();
+  if (st && !st.running && !busyWith() && !terminalRunning()) {
+    rmSync(LIVE_FILE, { force: true });
+    broadcast("notice", { tone: "warning", title: "Live trading stopped", description: `MT5 was closed, so ${st.strategy} is no longer trading.` });
+  }
+  const now = JSON.stringify(liveStatus());
+  if (now !== lastLive) broadcast("live", JSON.parse((lastLive = now)));
+}, 2000);
+
 const json = (d: unknown, status = 200) => Response.json(d, { status });
+
+// Saves edits from the Go live sheet before starting, like a backtest run does.
+function saveEdits(name: string, settings?: Record<string, string>, inputs?: Record<string, string>): string | null {
+  if (!getSettings(name)) return "No such strategy";
+  if (settings) saveSettings(name, settings);
+  if (inputs) saveInputs(name, inputs);
+  return null;
+}
 
 Bun.serve({
   port: PORT,
@@ -25,7 +52,7 @@ Bun.serve({
       return subscribe([
         ["threads", claude.listThreads()], ["chat-busy", claude.busy()],
         ["runs", listRuns()], ["strategies", listStrategies()], ["mt5", mt5State()],
-        ["chat-settings", claude.chatSettings()],
+        ["chat-settings", claude.chatSettings()], ["live", liveStatus()],
       ]);
     }
 
@@ -56,6 +83,33 @@ Bun.serve({
         : { tone: "success", title: "Symbols updated from MT5", description: `${listSymbols().symbols.length} symbols` }));
       return json({ ok: true });
     }
+    if (p === "/api/rule-profiles") {
+      if (post) {
+        const err = putProfile(await req.json());
+        if (err) return json({ error: err }, 400);
+      }
+      return json(listProfiles());
+    }
+    if ((m = p.match(/^\/api\/rule-profiles\/(.+)$/)) && req.method === "DELETE") {
+      deleteProfile(decodeURIComponent(m[1]));
+      return json(listProfiles());
+    }
+    if (p === "/api/live") return json({ status: liveStatus(), account: account(), log: liveLog() });
+    if (p === "/api/live/start" && post) {
+      const { strategy, settings, inputs } = await req.json();
+      if (!getInputs(strategy)) return json({ error: "No such strategy" }, 404);
+      if (settings || inputs) {
+        const err = saveEdits(strategy, settings, inputs);
+        if (err) return json({ error: err }, 400);
+      }
+      const r = await startLive(strategy);
+      return r.error ? json({ error: r.error }, 409) : json(r.info);
+    }
+    if (p === "/api/live/stop" && post) { await stopLive(); return json({ ok: true }); }
+    if ((m = p.match(/^\/api\/strategies\/(\w+)\/inputs$/))) {
+      const i = getInputs(m[1]);
+      return i ? json(i) : json({ error: "not found" }, 404);
+    }
     if ((m = p.match(/^\/api\/strategies\/(\w+)\/files$/))) {
       const f = getStrategyFiles(m[1]);
       return f ? json(f) : json({ error: "not found" }, 404);
@@ -67,7 +121,7 @@ Bun.serve({
 
     if ((m = p.match(/^\/api\/strategies\/(\w+)\/backtest$/)) && post) {
       const body = req.headers.get("content-length") !== "0" ? await req.json().catch(() => ({})) : {};
-      const err = rerun(m[1], body.settings);
+      const err = rerun(m[1], body.settings, body.inputs);
       return err ? json({ error: err }, 409) : json({ ok: true });
     }
     if ((m = p.match(/^\/api\/runs\/([^/]+)\/files$/))) {

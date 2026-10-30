@@ -47,18 +47,50 @@ what the user asked for. Symbols must exist on the user's broker
 ## Commands (the only shell commands you can run)
 
 ```
-tools/compile.sh <name>     compile only, prints errors/warnings
-tools/backtest.sh <name>    compile, then run the Strategy Tester
+tools/compile.sh <name>      compile only, prints errors/warnings
+tools/backtest.sh <name>     compile, then run the Strategy Tester
+tools/live.sh start <name>   start trading it live in MT5
+tools/live.sh stop           stop live trading
+tools/live.sh status         what is trading live, if anything
 ```
 
 `backtest.sh` prints the key stats and the run id. If it says MT5 is open,
 tell the user to close the MetaTrader 5 window and ask again; do not retry in
 a loop. If it says another backtest is running, wait for the user.
 
+Live trading: only start or stop it when the user explicitly asks in this
+message ("run it live", "stop it"), never on your own initiative. Before
+starting, say which account and server it will trade on (live.sh prints
+them). MT5 then runs the EA by itself; you are not in the loop. While it
+trades, backtests are refused (one MT5 terminal per data folder). Stopping
+leaves open positions open; tell the user so.
+
 ## Writing EAs
 
-- Expose every tunable as an `input` with an `Inp` prefix, so it shows in the
-  report and can be set from `[TesterInputs]`.
+- Size and guard every trade with the shared risk module. It gives every
+  strategy the same "Risk & rules" inputs (risk % / money / lots, daily and
+  max loss limits, profit target), generic enough for any prop firm; the
+  user sets them in the app. Never add your own lot-size or risk inputs.
+
+  ```mql5
+  #include <Studio/Risk.mqh>
+  int  OnInit()   { RiskInit(InpMagic); ... }
+  void OnDeinit(const int reason) { RiskDeinit(); ... }
+  void OnTick()
+    {
+     const bool can_open = RiskOnTick();   // every tick, before anything else
+     ...
+     if(!can_open) return;                  // limits reached: no new trades
+     double lots = RiskLots(_Symbol, ORDER_TYPE_BUY, entry, stopLoss);
+     if(lots <= 0) return;                  // no stop, or too wide for the risk
+    }
+  ```
+  Every trade needs a stop loss: risk sizing works from the stop distance.
+- Expose every strategy choice as an `input` under `input group "Strategy"`,
+  each on one line with a trailing `// comment` that says what it is in plain
+  words: `input double InpRiskReward = 2.0; // Take profit as a multiple of the stop`.
+  The app turns these into fields. Technical inputs (magic number, broker
+  time offsets) go under `input group "Advanced"`, which the app hides.
 - Use `CTrade` from `<Trade\Trade.mqh>`; set a magic number.
 - Act on closed bars (detect a new bar, read shift 1) unless the user wants
   intrabar logic.
@@ -100,4 +132,5 @@ include; if it needs a change, tell the user.
 
 After a backtest, give a short read of the result in plain words (net profit,
 profit factor, drawdown, trade count, anything suspicious such as too few
-trades), then suggest one concrete next step. Keep it brief.
+trades). If account rules were set, say whether any were breached and how
+close the worst day came. Then suggest one concrete next step. Keep it brief.

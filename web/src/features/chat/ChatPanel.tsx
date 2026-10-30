@@ -32,7 +32,12 @@ function ThreadsToggle() {
 function ThreadsDrawer() {
   const { isSidebarOpen } = useChat();
   // the stock sidebar is static on desktop; here it overlays the narrow panel
-  return <ChatSidebar className={cn("absolute md:absolute", isSidebarOpen ? "md:translate-x-0" : "md:-translate-x-full")} />;
+  return (
+    <ChatSidebar overlay className={cn(
+      "absolute md:absolute bg-surface dark:bg-surface shadow-elevated",
+      isSidebarOpen ? "md:translate-x-0" : "md:-translate-x-full shadow-none",
+    )} />
+  );
 }
 
 export function ChatPanel({ threadId, onThread, runId, onOpenRun }: {

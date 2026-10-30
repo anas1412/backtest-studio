@@ -165,9 +165,11 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
 
 export interface ChatSidebarProps {
   className?: string;
+  /** Drawer over the chat at every width: backdrop and close button stay on desktop */
+  overlay?: boolean;
 }
 
-export const ChatSidebar: React.FC<ChatSidebarProps> = ({ className }) => {
+export const ChatSidebar: React.FC<ChatSidebarProps> = ({ className, overlay }) => {
   const { threads = [], activeThreadId, onSelectThread, onNewChat, isSidebarOpen, setIsSidebarOpen } = useChat();
 
   // Group threads by group property
@@ -187,7 +189,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ className }) => {
       {isSidebarOpen && (
         <div
           onClick={() => setIsSidebarOpen(false)}
-          className="fixed inset-0 bg-black/40 backdrop-blur-xs z-40 md:hidden"
+          className={cn('fixed inset-0 bg-black/40 backdrop-blur-xs z-40', !overlay && 'md:hidden')}
         />
       )}
 
@@ -216,7 +218,8 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ className }) => {
             type="button"
             onClick={() => setIsSidebarOpen(false)}
             aria-label="Close sidebar"
-            className="p-2 rounded-xl border border-neutral-200/80 dark:border-neutral-800 bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 text-text-muted hover:text-text-primary transition-colors md:hidden focus-ring cursor-pointer shadow-xs"
+            // as an overlay it sits first, where the button that opened it is
+            className={cn('p-2 rounded-xl border border-neutral-200/80 dark:border-neutral-800 bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 text-text-muted hover:text-text-primary transition-colors focus-ring cursor-pointer shadow-xs', overlay ? 'order-first' : 'md:hidden')}
           >
             <X className="w-3.5 h-3.5" />
           </button>

@@ -16,6 +16,8 @@ import { StrategyHeader } from "./StrategyHeader";
 import { RunsSheet } from "./RunsSheet";
 import { SettingsBar } from "./SettingsBar";
 import { BacktestProgress } from "./BacktestProgress";
+import { LiveBanner } from "./LiveBanner";
+import { PropCheckCard } from "./PropCheckCard";
 import { RunSkeleton, WorkspaceSkeleton } from "@/features/shell/Skeletons";
 
 // Everything for one strategy: its test settings, then the selected run of it.
@@ -83,6 +85,7 @@ export function Workspace({ strategy, runId, onStrategy, onRunChange, onNewStrat
     <div className="flex h-full flex-col gap-4 overflow-y-auto p-5">
       <StrategyHeader strategy={strategy} meta={meta} avgSpread={shown?.avgSpread ?? null}
         onStrategy={onStrategy} onNewStrategy={onNewStrategy} onHistory={() => setHistory(true)} />
+      <LiveBanner />
       {banner}
       <SettingsBar strategy={strategy}
         reloadKey={`${version}-${runs.filter((r) => r.strategy === strategy && r.status !== "running").length}`} />
@@ -110,6 +113,7 @@ export function Workspace({ strategy, runId, onStrategy, onRunChange, onNewStrat
             {shown && (
               <div className="flex flex-col gap-4">
                 <StatsRow summary={shown.summary} trades={shown.trades} prev={prev} />
+                {shown.prop && <PropCheckCard prop={shown.prop} />}
                 <AnimatedTabs tabs={tabs} activeTab={tab} onChange={setTab} renderContent={false} variant="pill" />
                 {/* the trades table brings its own frame */}
                 <section className={tab === "trades" ? "" : "rounded-2xl border border-border bg-surface p-4"}>

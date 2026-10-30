@@ -13,6 +13,7 @@ const ALLOWED = [
   "Read", "Write", "Edit", "Glob", "Grep",
   "Bash(tools/compile.sh:*)", "Bash(./tools/compile.sh:*)",
   "Bash(tools/backtest.sh:*)", "Bash(./tools/backtest.sh:*)",
+  "Bash(tools/live.sh:*)", "Bash(./tools/live.sh:*)",
 ];
 
 export const MODELS = ["opus", "sonnet", "haiku", "fable"] as const;
