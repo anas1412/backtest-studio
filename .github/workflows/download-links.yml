@@ -11,6 +11,9 @@ on:
       tag:
         type: string
         required: true
+      publish:
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       tag:
@@ -30,6 +33,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ inputs.tag }}
+          PUBLISH: ${{ inputs.publish }}
         run: |
           tag="${TAG:-$(gh release view --json tagName -q .tagName)}"
           mkdir out && cd out
@@ -37,3 +41,5 @@ jobs:
           mv ./*_x64-setup.exe BacktestStudio-Windows-Setup.exe
           mv ./*_amd64.AppImage BacktestStudio-Linux.AppImage
           gh release upload "$tag" BacktestStudio-Windows-Setup.exe BacktestStudio-Linux.AppImage --clobber
+          # a release's draft until now: make it public and the latest
+          if [ "$PUBLISH" = true ]; then gh release edit "$tag" --draft=false --latest; fi

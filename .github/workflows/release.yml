@@ -3,7 +3,8 @@ name: Release
 # A tag like v0.2.0 builds the Linux AppImage and the Windows installer, signs
 # them for the in-app updater, and publishes them with latest.json (what
 # installed apps check). A manual run builds the same into a draft release, to
-# test the pipeline without publishing. Cut a release with scripts/release.sh.
+# test the pipeline without publishing; a tag's release is published only
+# when everything is uploaded. Cut a release with scripts/release.sh.
 on:
   push:
     tags: ['v[0-9]+.[0-9]+.[0-9]+']
@@ -82,13 +83,17 @@ jobs:
             Linux: download the `.AppImage`, make it executable, run it.
             Windows: run the `-setup.exe`. Windows shows "unknown publisher" (the app isn't code-signed); choose More info → Run anyway.
             Installed copies update themselves from here.
-          releaseDraft: ${{ github.ref_type != 'tag' }}
+          # always a draft: published below once every file is there
+          releaseDraft: true
           includeUpdaterJson: true
 
-  # fixed-name copies of the installers, for the "latest" download links
+  # fixed-name copies of the installers, for the "latest" download links, then
+  # publish: until then the release is a draft, so "latest" (the download
+  # buttons, the updater) never points at a release with files missing
   download-links:
     needs: build
     if: github.ref_type == 'tag'
     uses: ./.github/workflows/download-links.yml
     with:
       tag: ${{ github.ref_name }}
+      publish: true
