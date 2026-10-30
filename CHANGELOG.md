@@ -6,6 +6,8 @@ and what the app shows when it offers the update.
 
 ## Unreleased
 
+## 0.1.3 — 2026-10-30
+
 - Updates: a download that stops making progress for 30 seconds gives up and retries from another server, instead of hanging forever.
 
 ## 0.1.2 — 2026-10-30
