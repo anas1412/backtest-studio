@@ -1,5 +1,9 @@
 # Backtest Studio
 
+**[Website & docs](https://anas1412.github.io/backtest-studio/)** · [Download](https://github.com/anas1412/backtest-studio/releases/latest) · [Changelog](CHANGELOG.md)
+
+![Backtest Studio: the chat on the left, a backtest's settings, stats, account-rules check and chart on the right](docs/public/screenshot.png)
+
 Describe a trading strategy in plain words; an AI writes it as an MQL5 Expert Advisor, compiles it and backtests it in
 **your own MetaTrader 5**, and the results (chart, trades, stats, prop-firm rule check) appear next to the chat.
 When a strategy is ready you can run it live in MT5 from the app.
@@ -8,27 +12,31 @@ When a strategy is ready you can run it live in MT5 from the app.
   DeepSeek, OpenRouter, any OpenAI-compatible service, local Ollama).
 - **Risk & rules** shared by every strategy: risk % per trade, daily and max loss limits (static or trailing), profit
   target, with a pass/fail check on every backtest — any prop firm is just a set of these values.
-- **Linux and Windows.** On Linux MT5 runs under Wine.
+- **Windows and Linux.** MT5 runs natively on Windows and under Wine on Linux.
 
 ## Install
 
 Download the latest release from [Releases](https://github.com/anas1412/backtest-studio/releases/latest):
 
-- **Linux:** `Backtest.Studio_<version>_amd64.AppImage` → make it executable (`chmod +x`) and run it.
 - **Windows:** `Backtest.Studio_<version>_x64-setup.exe`. Windows warns about an unknown publisher (the app isn't
   code-signed): More info → Run anyway.
+- **Linux:** `Backtest.Studio_<version>_amd64.AppImage` → make it executable (`chmod +x`) and run it.
 
-The app updates itself: when a new version is out it offers "Restart to update".
+The app updates itself: when a new version is out it offers "Restart to update". Step by step, with troubleshooting:
+[Install guide](https://anas1412.github.io/backtest-studio/guide/install).
 
 ## First start
 
-1. **MetaTrader 5:** install it from your broker and log in once with "Save password" ticked (on Linux, in a Wine
-   prefix such as `~/.wine*` or Bottles). Click the MT5 badge in the app to pick the install and account.
+1. **MetaTrader 5:** install it from your broker (on Linux, in a Wine prefix such as `~/.wine*` or Bottles) and log in
+   once with "Save password" ticked. Click the MT5 badge in the app to pick the install and account.
 2. **AI:** open the model picker next to Send → *Engines & API keys* to see what was found or to add a key.
 3. Press **New strategy** and describe your idea.
 
-Your data (strategies, chats, keys, runs) lives in `~/.local/share/com.anas1412.backteststudio` on Linux and
-`%APPDATA%\com.anas1412.backteststudio` on Windows. API keys stay in that folder, readable only by your user.
+Everything else (backtest settings, risk & prop-firm rules, broker time and DST, going live, AI engines) is on the
+[website](https://anas1412.github.io/backtest-studio/).
+
+Your data (strategies, chats, keys, runs) lives in `%APPDATA%\com.anas1412.backteststudio` on Windows and
+`~/.local/share/com.anas1412.backteststudio` on Linux. API keys stay in that folder, readable only by your user.
 
 ## Build from source
 
@@ -46,6 +54,7 @@ Desktop app: `bun run tauri dev`, or `bun run tauri build` for an installer of t
 
 ## Releasing
 
-`scripts/release.sh 0.2.0` sets the version, tags and pushes; the *Release* workflow builds the AppImage and the Windows
-installer, signs them for the updater, and publishes them. The signing key is the repository secret
+Add notes under "Unreleased" in [CHANGELOG.md](CHANGELOG.md), then `scripts/release.sh 0.2.0` files them under the
+version, sets the version, tags and pushes; the *Release* workflow builds the AppImage and the Windows
+installer, signs them for the updater, and publishes them with that version's notes. The signing key is the repository secret
 `TAURI_SIGNING_PRIVATE_KEY` (+ `_PASSWORD`); keep a copy, without it installed apps can't take new updates.
