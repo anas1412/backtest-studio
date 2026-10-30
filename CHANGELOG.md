@@ -6,6 +6,7 @@ and what the app shows when it offers the update.
 
 ## Unreleased
 
+- Export any backtest as a PDF report: summary, balance and drawdown charts, account rules check, detailed stats, monthly returns, price chart with the trades, the settings used and every trade; optionally the strategy's code. *Export PDF* next to the runs button.
 - Linux: backtests asked for in the chat failed in the AppImage ("server/cli.ts isn't there"); the AI's commands now reach the app's runner.
 
 ## 0.1.3 — 2026-10-30

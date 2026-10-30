@@ -34,10 +34,10 @@ function parseEnums(src: string) {
   return enums;
 }
 
-// The strategy's source with studio includes inlined where they appear,
+// A strategy's source with studio includes inlined where they appear,
 // so groups keep the order the EA declares them in.
-function expandedSource(name: string): string {
-  return readFileSync(join(STRATEGIES, name, `${name}.mq5`), "utf8").replace(
+function expand(src: string): string {
+  return src.replace(
     /^\s*#include\s*<Studio\/(\w+\.mqh)>.*$/gm,
     (line, file) => (existsSync(join(TOOLS_INCLUDE, file)) ? readFileSync(join(TOOLS_INCLUDE, file), "utf8") : line),
   );
@@ -45,10 +45,16 @@ function expandedSource(name: string): string {
 
 export function getInputs(name: string): StrategyInput[] | null {
   if (!/^\w+$/.test(name) || !existsSync(join(STRATEGIES, name, `${name}.mq5`))) return null;
-  const src = expandedSource(name);
-  const enums = parseEnums(src);
   const iniPath = join(STRATEGIES, name, "tester.ini");
-  const set = existsSync(iniPath) ? parseIni(readFileSync(iniPath, "utf8")).get("TesterInputs") ?? new Map() : new Map();
+  return parseInputs(readFileSync(join(STRATEGIES, name, `${name}.mq5`), "utf8"), existsSync(iniPath) ? readFileSync(iniPath, "utf8") : "");
+}
+
+// The inputs of a source file with the values of a tester.ini (a strategy's
+// own, or the copies a run keeps).
+export function parseInputs(source: string, testerIni: string): StrategyInput[] {
+  const src = expand(source);
+  const enums = parseEnums(src);
+  const set = parseIni(testerIni).get("TesterInputs") ?? new Map();
   const out: StrategyInput[] = [];
   let group = "Strategy";
   for (const line of src.split(/\r?\n/)) {

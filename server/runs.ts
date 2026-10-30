@@ -7,7 +7,7 @@ import { broadcast } from "./events";
 import { mt5Open, busyWith, compile, backtest } from "./mt5";
 import { parseBars } from "./report";
 import { parseIni, setKeys } from "./ini";
-import { saveInputs } from "./inputs";
+import { saveInputs, parseInputs } from "./inputs";
 import { LIVE_FILE } from "./paths";
 
 const safe = (id: string) => /^[\w.-]+$/.test(id) && !id.startsWith("_");
@@ -53,6 +53,19 @@ export function getRunFiles(id: string) {
     ini: read(join(RUNS, id, "tester.ini")),
     log: read(join(RUNS, id, "tester.log")),
   };
+}
+
+// What a PDF report needs beyond getRun: the inputs the run used (from its
+// own copies of the source and tester.ini) and the risk module's daily log.
+export function getRunReport(id: string) {
+  const files = getRunFiles(id);
+  if (!files) return null;
+  const daily = read(join(RUNS, id, "daily.csv")).split(/\r?\n/).filter((l) => /^\d{4}\./.test(l)).map((l) => {
+    const [day, startBalance, startEquity, minEquity, maxEquity, endBalance, endEquity, trades] = l.split(",");
+    return { day, startBalance: +startBalance, startEquity: +startEquity, minEquity: +minEquity, maxEquity: +maxEquity,
+      endBalance: +endBalance, endEquity: +endEquity, trades: +trades };
+  });
+  return { inputs: files.source ? parseInputs(files.source, files.ini) : [], daily, source: files.source };
 }
 
 // The strategy as it is now, which may differ from what an older run used.

@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "server",
-  "description": "The studio UI, served by the app's own local server: its own window controls, and checking for and installing updates; nothing else",
+  "description": "The studio UI, served by the app's own local server: its own window controls, and checking for and installing updates, saving files through the Save dialog; nothing else",
   "windows": [
     "main"
   ],
@@ -26,6 +26,7 @@
     "allow-appimage-location",
     "allow-move-to-applications",
     "allow-keep-here",
-    "allow-set-launcher"
+    "allow-set-launcher",
+    "allow-save-file"
   ]
 }

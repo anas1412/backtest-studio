@@ -76,6 +76,13 @@ export type StrategyInput = {
 export type RuleProfile = { name: string; values: Record<string, string> };
 
 // mirrors server/prop.ts
+// What a PDF report needs beyond Run (GET /api/runs/:id/report).
+export type DailyRow = {
+  day: string; startBalance: number; startEquity: number; minEquity: number; maxEquity: number;
+  endBalance: number; endEquity: number; trades: number;
+};
+export type RunReport = { inputs: StrategyInput[]; daily: DailyRow[]; source: string };
+
 export type PropCheck = {
   size: number;
   daily: { limitPct: number; worstPct: number; worstDay: string | null; breaches: string[] } | null;

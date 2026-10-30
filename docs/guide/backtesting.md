@@ -40,6 +40,20 @@ runs at a time.
 - **Code:** the strategy's source files.
 - **Report:** MT5's tester log.
 
+## PDF report
+
+**Export PDF** (next to the runs button) saves the run you're looking at as a PDF report, to share or keep:
+
+- page 1: the test (symbol, timeframe, dates, broker, deposit, tick model, spread), the key numbers, the balance and
+  drawdown charts and the account rules check;
+- page 2: every statistic from MT5's report, returns per month, and the price chart with each entry and exit;
+- the settings the run used (risk & rules and the strategy's inputs);
+- every trade;
+- with *Report with code*, the strategy's MQL5 source as an appendix. Leave it out when you share a strategy you want
+  to keep to yourself.
+
+The desktop app asks where to save it; in a browser it downloads. Older runs from the history export the same way.
+
 ## Run history
 
 Every backtest is kept. The **runs** button next to the strategy opens its history, newest first. Each run keeps the

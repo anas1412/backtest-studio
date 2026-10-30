@@ -1,7 +1,7 @@
 // One SSE connection feeds a small external store; components read slices
 // of it with useStudio(). Chat events also go to per-thread listeners.
 import { useSyncExternalStore } from "react";
-import type { Account, EngineStatus, KeyProvider, Mt5Info, RuleProfile, ChatEvent, ChatSettings, LiveStatus, Mt5State, Run, RunMeta, Settings, StrategyInput, SymbolList, Thread } from "./types";
+import type { Account, EngineStatus, KeyProvider, Mt5Info, RuleProfile, ChatEvent, ChatSettings, LiveStatus, Mt5State, Run, RunMeta, RunReport, Settings, StrategyInput, SymbolList, Thread } from "./types";
 
 export type RunSummary = RunMeta & { net?: string; pf?: string; trades?: string; win?: string; dd?: string };
 export type Notice = { id: number; tone: "success" | "error" | "warning" | "info"; title: string; description?: string; runId?: string };
@@ -87,6 +87,7 @@ const post = (url: string, body?: unknown) =>
 
 export const api = {
   run: (id: string) => call<Run>(`/api/runs/${encodeURIComponent(id)}`),
+  runReport: (id: string) => call<RunReport>(`/api/runs/${encodeURIComponent(id)}/report`),
   runFiles: (id: string) => call<{ source: string; ini: string; log: string }>(`/api/runs/${encodeURIComponent(id)}/files`),
   strategyFiles: (name: string) => call<{ source: string; ini: string; log: string }>(`/api/strategies/${name}/files`),
   thread: (id: string) => call<ChatEvent[]>(`/api/threads/${id}`),

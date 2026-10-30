@@ -1,10 +1,11 @@
 // Backtest Studio desktop app: starts the studio's own server (the
 // `studio-server` sidecar) with the user's data folder, then points the
 // window at it. The UI and all the work live in that server; this only
-// hosts the window, keeps one instance, and installs updates.
+// hosts the window, keeps one instance, installs updates and saves files.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod desktop_entry;
+mod save;
 mod update;
 
 use std::sync::Mutex;
@@ -31,12 +32,14 @@ fn main() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             update::install_update,
             desktop_entry::appimage_location,
             desktop_entry::move_to_applications,
             desktop_entry::keep_here,
             desktop_entry::set_launcher,
+            save::save_file,
         ])
         .setup(|app| {
             let data = app.path().app_data_dir()?;

@@ -5,6 +5,7 @@ import { useStudio } from "@/lib/api";
 import type { RunMeta } from "@/lib/types";
 import { runTime, shortDate } from "@/lib/format";
 import { TICK_MODELS } from "@/lib/mt5";
+import { ExportButton } from "@/features/report/ExportButton";
 
 
 // Top of the results panel: which strategy (switchable), which run of it,
@@ -42,6 +43,7 @@ export function StrategyHeader({ strategy, meta, avgSpread, onStrategy, onNewStr
           : <Badge>not run yet</Badge>)}
 
         <div className="ml-auto flex items-center gap-2">
+          {meta?.status === "done" && <ExportButton runId={meta.id} />}
           {count > 0 && (
             <button type="button" onClick={onHistory}
               className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-medium text-text-secondary transition-colors hover:border-border-hover hover:text-text-primary focus-ring">

@@ -6,7 +6,7 @@ import { subscribe, broadcast } from "./events";
 import * as chat from "./chat";
 import { engineStatuses } from "./engines/registry";
 import { publicView as keysView, setProvider, removeProvider, type ProviderId } from "./keys";
-import { listRuns, getRun, getRunFiles, getStrategyFiles, listStrategies, getSettings, saveSettings, mt5State, rerun, startWatching } from "./runs";
+import { listRuns, getRun, getRunFiles, getRunReport, getStrategyFiles, listStrategies, getSettings, saveSettings, mt5State, rerun, startWatching } from "./runs";
 import { listSymbols, refreshSymbols } from "./symbols";
 import { getInputs, saveInputs } from "./inputs";
 import { listProfiles, putProfile, deleteProfile } from "./profiles";
@@ -176,6 +176,10 @@ const server = Bun.serve({
       const body = req.headers.get("content-length") !== "0" ? await req.json().catch(() => ({})) : {};
       const err = rerun(m[1], body.settings, body.inputs);
       return err ? json({ error: err }, 409) : json({ ok: true });
+    }
+    if ((m = p.match(/^\/api\/runs\/([^/]+)\/report$/))) {
+      const r = getRunReport(m[1]);
+      return r ? json(r) : json({ error: "not found" }, 404);
     }
     if ((m = p.match(/^\/api\/runs\/([^/]+)\/files$/))) {
       const f = getRunFiles(m[1]);
