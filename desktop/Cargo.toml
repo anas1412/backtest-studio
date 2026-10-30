@@ -12,7 +12,11 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = [] }
 tauri-plugin-shell = "2"
-tauri-plugin-updater = "2"
+# pinned to the minor version: install_update passes a reqwest client hook (configure_client)
+tauri-plugin-updater = "~2.14"
+reqwest = { version = "0.13", default-features = false }
+tokio = { version = "1", features = ["net", "time", "sync"] }
+serde = { version = "1", features = ["derive"] }
 tauri-plugin-process = "2"
 tauri-plugin-single-instance = "2"
 serde_json = "1"

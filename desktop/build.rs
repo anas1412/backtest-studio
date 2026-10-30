@@ -1,3 +1,7 @@
 fn main() {
-    tauri_build::build()
+    // app commands are listed, so the UI's capability must allow each one by name
+    tauri_build::try_build(
+        tauri_build::Attributes::new().app_manifest(tauri_build::AppManifest::new().commands(&["install_update"])),
+    )
+    .expect("failed to run tauri-build");
 }

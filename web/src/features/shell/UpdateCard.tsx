@@ -5,7 +5,7 @@ import { installUpdate, useUpdates } from "@/lib/updates";
 
 // Shown in the desktop app when a newer release exists; installs on click.
 export function UpdateCard() {
-  const { update, phase, progress, error } = useUpdates();
+  const { update, phase, progress, route, error } = useUpdates();
   const [hidden, setHidden] = useState<string | null>(null);
   if (!update || hidden === update.version) return null;
   const busy = phase === "downloading" || phase === "installing";
@@ -17,7 +17,7 @@ export function UpdateCard() {
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold">Update {update.version} available</p>
           <p className="mt-0.5 text-xs text-text-muted">
-            {phase === "downloading" ? `Downloading… ${Math.round(progress * 100)}%`
+            {phase === "downloading" ? `Downloading… ${Math.round(progress * 100)}%${route ? ` · fastest server ${route}` : ""}`
               : phase === "installing" ? "Installing, the app restarts in a moment"
               : phase === "error" ? `Update failed: ${error}`
               : "Restarts the app. Your strategies, chats and keys are kept."}

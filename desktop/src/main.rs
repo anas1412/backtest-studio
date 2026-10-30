@@ -4,6 +4,8 @@
 // hosts the window, keeps one instance, and installs updates.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod update;
+
 use std::sync::Mutex;
 use tauri::{Manager, RunEvent, Url};
 use tauri_plugin_shell::{process::{CommandChild, CommandEvent}, ShellExt};
@@ -26,6 +28,7 @@ fn main() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        .invoke_handler(tauri::generate_handler![update::install_update])
         .setup(|app| {
             let data = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data)?;

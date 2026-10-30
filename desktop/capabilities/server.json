@@ -2,7 +2,19 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "server",
   "description": "The studio UI, served by the app's own local server: may check for and install updates, nothing else",
-  "windows": ["main"],
-  "remote": { "urls": ["http://127.0.0.1:*"] },
-  "permissions": ["core:default", "updater:default", "process:allow-restart"]
+  "windows": [
+    "main"
+  ],
+  "remote": {
+    "urls": [
+      "http://127.0.0.1:*"
+    ]
+  },
+  "permissions": [
+    "core:default",
+    "core:event:default",
+    "updater:default",
+    "process:allow-restart",
+    "allow-install-update"
+  ]
 }

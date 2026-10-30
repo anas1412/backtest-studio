@@ -11,10 +11,11 @@ type State = {
   update: Update | null;             // newer release, when found
   phase: "idle" | "checking" | "downloading" | "installing" | "error" | "latest";
   progress: number;                  // 0..1 while downloading
+  route: string | null;              // the download address that won the race
   error: string | null;
 };
 
-let state: State = { version: null, update: null, phase: "idle", progress: 0, error: null };
+let state: State = { version: null, update: null, phase: "idle", progress: 0, route: null, error: null };
 const listeners = new Set<() => void>();
 const set = (p: Partial<State>) => { state = { ...state, ...p }; listeners.forEach((l) => l()); };
 
@@ -32,21 +33,23 @@ export async function checkForUpdates() {
   }
 }
 
+// Downloads through the app's install_update command, which takes the
+// fastest of GitHub's download addresses, then restarts into the new version.
 export async function installUpdate() {
-  const u = state.update;
-  if (!u) return;
-  let total = 0, got = 0;
-  set({ phase: "downloading", progress: 0, error: null });
+  if (!state.update) return;
+  set({ phase: "downloading", progress: 0, error: null, route: null });
+  const { invoke } = await import("@tauri-apps/api/core");
+  const { listen } = await import("@tauri-apps/api/event");
+  const stop = await listen<{ downloaded: number; total: number | null; route: string | null }>("update-progress", ({ payload }) => {
+    const progress = payload.total ? payload.downloaded / payload.total : 0;
+    set({ progress, route: payload.route, phase: progress >= 1 ? "installing" : "downloading" });
+  });
   try {
-    await u.downloadAndInstall((ev) => {
-      if (ev.event === "Started") total = ev.data.contentLength ?? 0;
-      if (ev.event === "Progress") { got += ev.data.chunkLength; set({ progress: total ? got / total : 0 }); }
-      if (ev.event === "Finished") set({ phase: "installing", progress: 1 });
-    });
-    const { relaunch } = await import("@tauri-apps/plugin-process");
-    await relaunch();
+    await invoke("install_update"); // restarts the app when done
   } catch (e) {
     set({ phase: "error", error: String((e as Error)?.message ?? e) });
+  } finally {
+    stop();
   }
 }
 

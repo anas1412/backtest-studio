@@ -217,6 +217,8 @@ checksum = "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
 name = "backtest-studio"
 version = "0.1.0"
 dependencies = [
+ "reqwest",
+ "serde",
  "serde_json",
  "tauri",
  "tauri-build",
@@ -224,6 +226,7 @@ dependencies = [
  "tauri-plugin-shell",
  "tauri-plugin-single-instance",
  "tauri-plugin-updater",
+ "tokio",
 ]
 
 [[package]]
