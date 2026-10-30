@@ -1,7 +1,9 @@
 import { join, normalize } from "node:path";
 import { WEB } from "./paths";
 import { subscribe, broadcast } from "./events";
-import * as claude from "./claude";
+import * as chat from "./chat";
+import { engineStatuses } from "./engines/registry";
+import { publicView as keysView, setProvider, removeProvider, type ProviderId } from "./keys";
 import { listRuns, getRun, getRunFiles, getStrategyFiles, listStrategies, getSettings, saveSettings, mt5State, rerun, startWatching } from "./runs";
 import { listSymbols, refreshSymbols } from "./symbols";
 import { getInputs, saveInputs } from "./inputs";
@@ -52,31 +54,53 @@ Bun.serve({
 
     if (p === "/api/events") {
       return subscribe([
-        ["threads", claude.listThreads()], ["chat-busy", claude.busy()],
+        ["threads", chat.listThreads()], ["chat-busy", chat.busy()],
         ["runs", listRuns()], ["strategies", listStrategies()], ["mt5", mt5State()],
-        ["chat-settings", claude.chatSettings()], ["live", liveStatus()],
+        ["chat-settings", chat.chatSettings()], ["live", liveStatus()],
         ["mt5-config", { dir: mt5Dir(), account: selectedAccount() ?? lastLogin() }],
+        ["engines", await engineStatuses()],
       ]);
     }
 
-    if (p === "/api/threads" && post) return json(claude.createThread());
+    if (p === "/api/threads" && post) return json(chat.createThread());
     if ((m = p.match(/^\/api\/threads\/([\w-]+)$/))) {
-      if (req.method === "DELETE") { claude.deleteThread(m[1]); return json({ ok: true }); }
-      const ev = claude.threadEvents(m[1]);
+      if (req.method === "DELETE") { chat.deleteThread(m[1]); return json({ ok: true }); }
+      const ev = chat.threadEvents(m[1]);
       return ev ? json(ev) : json({ error: "not found" }, 404);
     }
     if (p === "/api/chat" && post) {
       const { threadId, message } = await req.json();
       if (!message?.trim()) return json({ error: "Empty message" }, 400);
-      if (claude.busy()) return json({ error: "Claude is still working" }, 409);
-      if (!claude.threadEvents(threadId)) return json({ error: "No such thread" }, 404);
-      claude.send(threadId, message).catch((e) => console.error(e));
+      if (chat.busy()) return json({ error: "Still working on the last message" }, 409);
+      if (!chat.threadEvents(threadId)) return json({ error: "No such thread" }, 404);
+      chat.send(threadId, message).catch((e) => console.error(e));
       return json({ ok: true });
     }
-    if (p === "/api/chat/stop" && post) { claude.stop(); return json({ ok: true }); }
+    if (p === "/api/chat/stop" && post) { chat.stop(); return json({ ok: true }); }
+    if (p === "/api/chat/confirm" && post) {
+      const { id, answer } = await req.json();
+      return chat.answerConfirm(String(id), !!answer) ? json({ ok: true }) : json({ error: "Nothing waiting for an answer" }, 404);
+    }
+    if (p === "/api/engines") {
+      const st = await engineStatuses(url.searchParams.has("refresh"));
+      if (url.searchParams.has("refresh")) broadcast("engines", st);
+      return json(st);
+    }
+    // API keys: the browser only ever gets masks back
+    if (p === "/api/keys") return json(keysView());
+    if ((m = p.match(/^\/api\/keys\/(\w+)$/))) {
+      const id = m[1] as ProviderId;
+      if (req.method === "DELETE") removeProvider(id);
+      else if (post) {
+        const err = setProvider(id, await req.json());
+        if (err) return json({ error: err }, 400);
+      }
+      broadcast("engines", await engineStatuses(true)); // re-checks the key
+      return json(keysView());
+    }
     if (p === "/api/chat/settings" && post) {
-      const err = claude.setChatSettings(await req.json());
-      return err ? json({ error: err }, 400) : json(claude.chatSettings());
+      const err = await chat.setChatSettings(await req.json());
+      return err ? json({ error: err }, 400) : json(chat.chatSettings());
     }
 
     if (p === "/api/symbols") return json(listSymbols());

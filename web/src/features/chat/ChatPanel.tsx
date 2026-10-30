@@ -10,7 +10,7 @@ import type { ChatEvent, Thread } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { buildTranscript } from "./transcript";
 import { RunCard } from "./RunCard";
-import { ModelPicker, MODEL_LABELS } from "./ModelPicker";
+import { ModelPicker, modelLabel, engineLabel } from "./ModelPicker";
 import { ChatSkeleton } from "@/features/shell/Skeletons";
 
 function group(t: Thread): string {
@@ -44,6 +44,7 @@ export function ChatPanel({ threadId, onThread, runId, onOpenRun }: {
   threadId: string | null; onThread: (id: string) => void; runId: string | null; onOpenRun: (id: string) => void;
 }) {
   const threads = useStudio((s) => s.threads);
+  const engines = useStudio((s) => s.engines);
   const busyThread = useStudio((s) => s.busyThread);
   const [events, setEvents] = useState<ChatEvent[]>([]);
   const [loadingThread, setLoadingThread] = useState(false);
@@ -120,7 +121,9 @@ export function ChatPanel({ threadId, onThread, runId, onOpenRun }: {
                   <ChatMessage key={it.key} message={{
                     id: it.key, role: "user", content: it.text,
                     // which model answered this message
-                    timestamp: it.model ? `${MODEL_LABELS[it.model] ?? it.model} · ${it.effort} effort` : "default model",
+                    timestamp: it.model
+                      ? [engineLabel(engines, it.engine ?? "claude"), modelLabel(engines, it.engine ?? "claude", it.model), it.effort && `${it.effort} effort`].filter(Boolean).join(" · ")
+                      : "default model",
                   }} />
                 );
               case "assistant":
@@ -138,6 +141,23 @@ export function ChatPanel({ threadId, onThread, runId, onOpenRun }: {
                 );
               case "run":
                 return <RunCard key={it.key} runId={it.runId} active={it.runId === runId} onOpen={onOpenRun} />;
+              case "confirm":
+                return (
+                  <Alert key={it.key} tone={it.answer === undefined ? "warning" : "neutral"}
+                    action={it.answer === undefined && live ? (
+                      <div className="flex gap-2">
+                        <button type="button" onClick={() => api.confirm(it.id, false)}
+                          className="h-8 rounded-lg border border-border px-3 text-xs font-medium hover:bg-surface-hover focus-ring">No</button>
+                        <button type="button" onClick={() => api.confirm(it.id, true)}
+                          className="h-8 rounded-lg bg-text-primary px-3 text-xs font-medium text-background focus-ring">Yes</button>
+                      </div>
+                    ) : undefined}>
+                    <AlertDescription className="mt-0">
+                      {it.question}
+                      {it.answer !== undefined && <span className="ml-2 text-text-muted">— {it.answer ? "you said yes" : "you said no"}</span>}
+                    </AlertDescription>
+                  </Alert>
+                );
               case "error":
                 return (
                   <Alert key={it.key} tone={it.text === "Stopped" ? "neutral" : "danger"}>

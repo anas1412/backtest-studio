@@ -1,7 +1,7 @@
 // One SSE connection feeds a small external store; components read slices
 // of it with useStudio(). Chat events also go to per-thread listeners.
 import { useSyncExternalStore } from "react";
-import type { Account, Mt5Info, RuleProfile, ChatEvent, ChatSettings, LiveStatus, Mt5State, Run, RunMeta, Settings, StrategyInput, SymbolList, Thread } from "./types";
+import type { Account, EngineStatus, KeyProvider, Mt5Info, RuleProfile, ChatEvent, ChatSettings, LiveStatus, Mt5State, Run, RunMeta, Settings, StrategyInput, SymbolList, Thread } from "./types";
 
 export type RunSummary = RunMeta & { net?: string; pf?: string; trades?: string; win?: string; dd?: string };
 export type Notice = { id: number; tone: "success" | "error" | "warning" | "info"; title: string; description?: string; runId?: string };
@@ -19,10 +19,11 @@ type State = {
   chatSettings: ChatSettings;
   live: LiveStatus | null;
   mt5Config: { dir: string; account: { login: string; server: string } } | null;
+  engines: EngineStatus[];
 };
 
 let state: State = { connected: false, loaded: false, strategiesVersion: 0, threads: [], busyThread: null, runs: [], strategies: [], mt5: "ready", notice: null,
-  chatSettings: { model: "opus", effort: "high" }, live: null, mt5Config: null };
+  chatSettings: { engine: "claude", model: "opus", effort: "high" }, live: null, mt5Config: null, engines: [] };
 const listeners = new Set<() => void>();
 const chatListeners = new Set<(threadId: string, e: ChatEvent) => void>();
 let noticeId = 0;
@@ -69,6 +70,7 @@ export function connect() {
   on<ChatSettings>("chat-settings", (chatSettings) => set({ chatSettings }));
   on<LiveStatus | null>("live", (live) => set({ live }));
   on<State["mt5Config"]>("mt5-config", (mt5Config) => set({ mt5Config }));
+  on<EngineStatus[]>("engines", (engines) => set({ engines }));
   on<{ threadId: string; event: ChatEvent }>("chat", ({ threadId, event }) => chatListeners.forEach((l) => l(threadId, event)));
   on<Omit<Notice, "id">>("notice", notify);
 }
@@ -109,4 +111,9 @@ export const api = {
   symbols: () => call<SymbolList>("/api/symbols"),
   refreshSymbols: () => post("/api/symbols/refresh"),
   setChatSettings: (s: Partial<ChatSettings>) => post("/api/chat/settings", s),
+  confirm: (id: string, answer: boolean) => post("/api/chat/confirm", { id, answer }),
+  engines: (refresh = false) => call<EngineStatus[]>(`/api/engines${refresh ? "?refresh" : ""}`),
+  keys: () => call<KeyProvider[]>("/api/keys"),
+  setKey: (id: string, v: { key?: string; baseURL?: string }) => post(`/api/keys/${id}`, v) as Promise<KeyProvider[]>,
+  removeKey: (id: string) => call<KeyProvider[]>(`/api/keys/${id}`, { method: "DELETE" }),
 };

@@ -32,15 +32,28 @@ export type Run = {
 export type Mt5State = "ready" | "testing" | "symbols" | "live" | "gui-open";
 
 export type ChatEvent =
-  | { kind: "user"; text: string; model?: string; effort?: string }
+  | { kind: "user"; text: string; engine?: string; model?: string; effort?: string }
   | { kind: "text"; text: string }
   | { kind: "tool"; id: string; name: string; input: Record<string, unknown> }
   | { kind: "tool_result"; id: string; output: string; error: boolean }
+  | { kind: "confirm"; id: string; question: string; answer?: boolean }
   | { kind: "done"; cost?: number; error?: string };
 
 export type Thread = { id: string; title: string; created: string };
 
-export type ChatSettings = { model: string; effort: string };
+export type ChatSettings = { engine: string; model: string; effort: string };
+
+// mirrors server/engines/types.ts
+export type ModelInfo = { id: string; label: string; efforts?: string[] };
+export type EngineStatus = {
+  id: string; label: string; kind: "cli" | "api"; available: boolean; detail: string;
+  setup?: string; models: ModelInfo[]; customModels: boolean;
+};
+// mirrors server/keys.ts publicView()
+export type KeyProvider = {
+  id: string; label: string; env?: string; needsKey: boolean; needsURL: boolean; defaultURL?: string; hint: string;
+  configured: boolean; key: string | null; fromEnv: boolean; baseURL: string | null;
+};
 
 // [Tester] keys the settings bar edits; values exactly as in tester.ini
 export type Settings = {
