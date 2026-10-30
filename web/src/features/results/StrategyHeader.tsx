@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { History, Plus } from "lucide-react";
+import { Mt5Sheet } from "@/features/shell/Mt5Sheet";
 import { Badge } from "@/components/ui/badge";
 import { Combobox } from "@/components/ui/combobox";
 import { useStudio } from "@/lib/api";
@@ -24,6 +26,8 @@ export function StrategyHeader({ strategy, meta, avgSpread, onStrategy, onNewStr
   const runs = useStudio((s) => s.runs);
   const mt5 = useStudio((s) => s.mt5);
   const connected = useStudio((s) => s.connected);
+  const mt5Config = useStudio((s) => s.mt5Config);
+  const [mt5Open, setMt5Open] = useState(false);
   const count = runs.filter((r) => r.strategy === strategy).length;
   const m = MT5[mt5];
   const t = meta?.tester;
@@ -52,9 +56,15 @@ export function StrategyHeader({ strategy, meta, avgSpread, onStrategy, onNewStr
           : <Badge>not run yet</Badge>)}
 
         <div className="ml-auto flex items-center gap-2">
-          {connected
-            ? <Badge tone={m.tone} dot pulse={m.pulse}>{m.label}</Badge>
-            : <Badge tone="danger" dot>Server offline</Badge>}
+          {connected ? (
+            // the status doubles as the way into the install and account settings
+            <button type="button" onClick={() => setMt5Open(true)} title="MT5 install and account" className="rounded-full focus-ring">
+              <Badge tone={m.tone} dot pulse={m.pulse}>
+                {m.label}{mt5Config?.account.login && <span className="ml-1 font-normal opacity-80">· {mt5Config.account.login}</span>}
+              </Badge>
+            </button>
+          ) : <Badge tone="danger" dot>Server offline</Badge>}
+          <Mt5Sheet open={mt5Open} onOpenChange={setMt5Open} />
           {count > 0 && (
             <button type="button" onClick={onHistory}
               className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-medium text-text-secondary transition-colors hover:border-border-hover hover:text-text-primary focus-ring">

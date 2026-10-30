@@ -8,7 +8,9 @@ import { getInputs, saveInputs } from "./inputs";
 import { listProfiles, putProfile, deleteProfile } from "./profiles";
 import { account, liveStatus, startLive, stopLive, liveLog } from "./live";
 import { busyWith } from "./mt5";
-import { terminalRunning } from "./platform";
+import { terminalRunning, startMt5Detached } from "./platform";
+import { scanInstalls, accounts, select, mt5Dir, selectedAccount, lastLogin } from "./install";
+import { linked } from "./links";
 import { rmSync } from "node:fs";
 import { LIVE_FILE } from "./paths";
 
@@ -53,6 +55,7 @@ Bun.serve({
         ["threads", claude.listThreads()], ["chat-busy", claude.busy()],
         ["runs", listRuns()], ["strategies", listStrategies()], ["mt5", mt5State()],
         ["chat-settings", claude.chatSettings()], ["live", liveStatus()],
+        ["mt5-config", { dir: mt5Dir(), account: selectedAccount() ?? lastLogin() }],
       ]);
     }
 
@@ -93,6 +96,25 @@ Bun.serve({
     if ((m = p.match(/^\/api\/rule-profiles\/(.+)$/)) && req.method === "DELETE") {
       deleteProfile(decodeURIComponent(m[1]));
       return json(listProfiles());
+    }
+    if (p === "/api/mt5") {
+      return json({
+        installs: scanInstalls(), dir: mt5Dir(), linked: linked(mt5Dir()),
+        account: selectedAccount(), lastLogin: lastLogin(), accounts: accounts(),
+      });
+    }
+    if (p === "/api/mt5/select" && post) {
+      if (mt5State() !== "ready") return json({ error: "Wait until MT5 is idle (no backtest, not live, window closed)" }, 409);
+      const err = select(await req.json());
+      if (err) return json({ error: err }, 400);
+      broadcast("mt5-config", { dir: mt5Dir(), account: selectedAccount() ?? lastLogin() });
+      return json({ ok: true });
+    }
+    // opens the MT5 window as the studio uses it, to log into another account
+    if (p === "/api/mt5/open" && post) {
+      if (mt5State() !== "ready") return json({ error: "MT5 is already running or busy" }, 409);
+      startMt5Detached("terminal64.exe", ["/portable"]);
+      return json({ ok: true });
     }
     if (p === "/api/live") return json({ status: liveStatus(), account: account(), log: liveLog() });
     if (p === "/api/live/start" && post) {

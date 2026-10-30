@@ -3,7 +3,8 @@
 // loop; MT5 runs the compiled EA. State lives in workspace/.studio/live.json.
 import { existsSync, readFileSync, writeFileSync, rmSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { MT5_DIR, LIVE_FILE } from "./paths";
+import { LIVE_FILE } from "./paths";
+import { mt5Dir, withAccount, selectedAccount, lastLogin, journalWatch, loginFailure } from "./install";
 import { compile, busyWith, utf16 } from "./mt5";
 import { startMt5Detached, terminalRunning, closeTerminal } from "./platform";
 import { getInputs, presetText } from "./inputs";
@@ -15,12 +16,10 @@ export type LiveInfo = {
   started: string; login: string; server: string;
 };
 
+// The account live trading will use: the one picked in the app, else MT5's last.
 export function account(): { login: string; server: string; demo: boolean } {
-  const f = join(MT5_DIR, "Config", "common.ini");
-  const t = existsSync(f) ? utf16(f) : "";
-  const login = t.match(/^Login=(.+)$/m)?.[1].trim() ?? "";
-  const server = t.match(/^Server=(.+)$/m)?.[1].trim() ?? "";
-  return { login, server, demo: /demo|trial/i.test(server) };
+  const { login, server } = selectedAccount() ?? lastLogin();
+  return { login, server, demo: /demo|trial|sim/i.test(server) };
 }
 
 export function liveInfo(): LiveInfo | null {
@@ -46,9 +45,9 @@ export async function startLive(name: string): Promise<{ error?: string; info?: 
   if (!c.ok) return { error: `${name} did not compile:\n${c.output}` };
 
   // inputs as a preset; MT5 looks for it in MQL5/Presets
-  mkdirSync(join(MT5_DIR, "MQL5", "Presets"), { recursive: true });
+  mkdirSync(join(mt5Dir(), "MQL5", "Presets"), { recursive: true });
   const preset = `studio_${name}.set`;
-  writeFileSync(join(MT5_DIR, "MQL5", "Presets", preset), presetText(inputs));
+  writeFileSync(join(mt5Dir(), "MQL5", "Presets", preset), presetText(inputs));
 
   const ini = parseIni("");
   // Enabled = the Algo Trading button; Account/Profile = 0 so it stays on
@@ -57,7 +56,7 @@ export async function startLive(name: string): Promise<{ error?: string; info?: 
     ["Expert", `Studio\\${name}\\${name}`], ["ExpertParameters", preset],
     ["Symbol", settings.Symbol], ["Period", settings.Period],
   ]));
-  writeFileSync(join(MT5_DIR, "studio_live.ini"), writeIni(ini));
+  writeFileSync(join(mt5Dir(), "studio_live.ini"), withAccount(writeIni(ini)));
 
   const { login, server } = account();
   const info: LiveInfo = {
@@ -67,7 +66,19 @@ export async function startLive(name: string): Promise<{ error?: string; info?: 
   };
   mkdirSync(join(LIVE_FILE, ".."), { recursive: true });
   writeFileSync(LIVE_FILE, JSON.stringify(info, null, 2));
+  const fresh = journalWatch();
   startMt5Detached("terminal64.exe", ["/portable", "/config:studio_live.ini"]);
+  // give it time to log in; a failed login means nothing would ever trade
+  for (let i = 0; i < 15; i++) {
+    await Bun.sleep(2000);
+    const text = fresh();
+    const failure = loginFailure(text);
+    if (failure) {
+      await stopLive();
+      return { error: failure };
+    }
+    if (/authorized on/.test(text)) break;
+  }
   return { info };
 }
 
@@ -81,7 +92,7 @@ export async function stopLive() {
 // Recent terminal and EA journal lines, newest last.
 export function liveLog(lines = 80): string[] {
   // MT5 names the EA log folder "logs" or "Logs" depending on version; Linux is case-sensitive
-  const dirs = [join(MT5_DIR, "logs"), join(MT5_DIR, "MQL5", "logs"), join(MT5_DIR, "MQL5", "Logs")];
+  const dirs = [join(mt5Dir(), "logs"), join(mt5Dir(), "MQL5", "logs"), join(mt5Dir(), "MQL5", "Logs")];
   const since = new Date(liveInfo()?.started ?? 0).getTime() - 60_000;
   const out: { t: number; line: string }[] = [];
   for (const d of dirs) {

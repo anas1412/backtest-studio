@@ -1,7 +1,7 @@
 // One SSE connection feeds a small external store; components read slices
 // of it with useStudio(). Chat events also go to per-thread listeners.
 import { useSyncExternalStore } from "react";
-import type { Account, RuleProfile, ChatEvent, ChatSettings, LiveStatus, Mt5State, Run, RunMeta, Settings, StrategyInput, SymbolList, Thread } from "./types";
+import type { Account, Mt5Info, RuleProfile, ChatEvent, ChatSettings, LiveStatus, Mt5State, Run, RunMeta, Settings, StrategyInput, SymbolList, Thread } from "./types";
 
 export type RunSummary = RunMeta & { net?: string; pf?: string; trades?: string; win?: string; dd?: string };
 export type Notice = { id: number; tone: "success" | "error" | "warning" | "info"; title: string; description?: string; runId?: string };
@@ -18,10 +18,11 @@ type State = {
   notice: Notice | null;
   chatSettings: ChatSettings;
   live: LiveStatus | null;
+  mt5Config: { dir: string; account: { login: string; server: string } } | null;
 };
 
 let state: State = { connected: false, loaded: false, strategiesVersion: 0, threads: [], busyThread: null, runs: [], strategies: [], mt5: "ready", notice: null,
-  chatSettings: { model: "opus", effort: "high" }, live: null };
+  chatSettings: { model: "opus", effort: "high" }, live: null, mt5Config: null };
 const listeners = new Set<() => void>();
 const chatListeners = new Set<(threadId: string, e: ChatEvent) => void>();
 let noticeId = 0;
@@ -67,6 +68,7 @@ export function connect() {
   on<Mt5State>("mt5", (mt5) => set({ mt5 }));
   on<ChatSettings>("chat-settings", (chatSettings) => set({ chatSettings }));
   on<LiveStatus | null>("live", (live) => set({ live }));
+  on<State["mt5Config"]>("mt5-config", (mt5Config) => set({ mt5Config }));
   on<{ threadId: string; event: ChatEvent }>("chat", ({ threadId, event }) => chatListeners.forEach((l) => l(threadId, event)));
   on<Omit<Notice, "id">>("notice", notify);
 }
@@ -97,6 +99,9 @@ export const api = {
   liveStart: (strategy: string, settings?: Settings, inputs?: Record<string, string>) =>
     post("/api/live/start", { strategy, settings, inputs }),
   liveStop: () => post("/api/live/stop"),
+  mt5: () => call<Mt5Info>("/api/mt5"),
+  mt5Select: (s: { dir?: string; login?: string; server?: string }) => post("/api/mt5/select", s),
+  mt5Open: () => post("/api/mt5/open"),
   ruleProfiles: () => call<RuleProfile[]>("/api/rule-profiles"),
   saveProfile: (p: RuleProfile) => post("/api/rule-profiles", p) as Promise<RuleProfile[]>,
   deleteProfile: (name: string) => call<RuleProfile[]>(`/api/rule-profiles/${encodeURIComponent(name)}`, { method: "DELETE" }),

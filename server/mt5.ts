@@ -8,7 +8,8 @@
 // run refuses to start while the MT5 GUI is open.
 import { existsSync, readFileSync, writeFileSync, mkdirSync, copyFileSync, rmSync, statSync, readdirSync, openSync, closeSync } from "node:fs";
 import { join } from "node:path";
-import { MT5_DIR, STRATEGIES, RUNS, BARS_CACHE, COMMON_FILES, TOOLS_MQL5, LIVE_FILE } from "./paths";
+import { STRATEGIES, RUNS, BARS_CACHE, TOOLS_MQL5, LIVE_FILE } from "./paths";
+import { mt5Dir, commonFiles, withAccount, utf16, journalWatch, loginFailure } from "./install";
 import { runMt5, terminalRunning, killTerminal, pidAlive } from "./platform";
 import { parseIni, writeIni } from "./ini";
 import { parseReport } from "./report";
@@ -18,17 +19,14 @@ const LOCK = join(RUNS, ".lock");
 const BARS_FILE = "studio_bars.csv";
 const DAILY_FILE = "studio_daily.csv"; // written by <Studio/Risk.mqh> in the tester
 
-export function utf16(path: string): string {
-  const buf = readFileSync(path);
-  return buf[0] === 0xff && buf[1] === 0xfe ? buf.toString("utf16le").slice(1) : buf.toString("utf8");
-}
+export { utf16 };
 
 export const mt5Open = terminalRunning;
 
 export async function compile(path: string, root = "MQL5/Experts"): Promise<{ ok: boolean; output: string }> {
   // path is relative to root, e.g. "Studio/ma_cross/ma_cross.mq5"
   const rel = `${root}/${path}`;
-  const src = join(MT5_DIR, rel);
+  const src = join(mt5Dir(), rel);
   if (!existsSync(src)) return { ok: false, output: `No source at ${rel}` };
   const log = src.replace(/\.mq5$/, ".log");
   rmSync(log, { force: true });
@@ -71,20 +69,32 @@ export const unlock = () => rmSync(LOCK, { force: true });
 
 // Starts the terminal with a config and waits for it to shut itself down.
 // timeoutMs is a backstop for runs that can hang (no broker connection).
+// A failed login (expired trial, wrong server) would leave the terminal
+// waiting forever, so the journal is watched and the run stopped with the reason.
 export async function runTerminal(iniText: string, timeoutMs?: number): Promise<void> {
-  writeFileSync(join(MT5_DIR, "studio_run.ini"), iniText);
-  const run = runMt5("terminal64.exe", ["/portable", "/config:studio_run.ini"]);
-  if (!timeoutMs) return void (await run);
-  const timer = setTimeout(killTerminal, timeoutMs);
-  await run;
-  clearTimeout(timer);
+  writeFileSync(join(mt5Dir(), "studio_run.ini"), withAccount(iniText));
+  const fresh = journalWatch();
+  let failure: string | null = null;
+  const watch = setInterval(() => {
+    failure = loginFailure(fresh());
+    if (failure) killTerminal();
+  }, 2000);
+  const timer = timeoutMs ? setTimeout(killTerminal, timeoutMs) : undefined;
+  try {
+    await runMt5("terminal64.exe", ["/portable", "/config:studio_run.ini"]);
+  } finally {
+    clearInterval(watch);
+    clearTimeout(timer);
+  }
+  failure ??= loginFailure(fresh());
+  if (failure) throw new Error(failure);
 }
 
 function testerLogTail(since: number): string {
   // newest tester agent / terminal log written during this run
-  const dirs = [join(MT5_DIR, "Tester", "logs"), join(MT5_DIR, "logs")];
-  for (const d of readdirSync(join(MT5_DIR, "Tester"))) {
-    if (d.startsWith("Agent-")) dirs.unshift(join(MT5_DIR, "Tester", d, "logs"));
+  const dirs = [join(mt5Dir(), "Tester", "logs"), join(mt5Dir(), "logs")];
+  for (const d of readdirSync(join(mt5Dir(), "Tester"))) {
+    if (d.startsWith("Agent-")) dirs.unshift(join(mt5Dir(), "Tester", d, "logs"));
   }
   const logs = dirs.flatMap((d) => existsSync(d) ? readdirSync(d).map((f) => join(d, f)) : [])
     .filter((f) => f.endsWith(".log") && statSync(f).mtimeMs >= since)
@@ -98,7 +108,7 @@ async function bars(tester: Map<string, string>): Promise<string | null> {
   const cached = join(BARS_CACHE, `v2_${key}.csv`);
   if (existsSync(cached)) return cached;
   // rebuild when missing or older than its source (the export format changes with it)
-  const ex5 = join(MT5_DIR, "MQL5/Experts/StudioTools/StudioBars.ex5");
+  const ex5 = join(mt5Dir(), "MQL5/Experts/StudioTools/StudioBars.ex5");
   if (!existsSync(ex5) || statSync(ex5).mtimeMs < statSync(join(TOOLS_MQL5, "StudioBars.mq5")).mtimeMs) {
     const c = await compile("StudioTools/StudioBars.mq5");
     if (!c.ok) return null;
@@ -114,7 +124,7 @@ async function bars(tester: Map<string, string>): Promise<string | null> {
     ["Deposit", tester.get("Deposit") ?? "10000"],
     ["Optimization", "0"], ["Visual", "0"], ["ShutdownTerminal", "1"],
   ]));
-  const out = join(COMMON_FILES, BARS_FILE);
+  const out = join(commonFiles(), BARS_FILE);
   rmSync(out, { force: true });
   await runTerminal(writeIni(ini));
   if (!existsSync(out)) return null;
@@ -158,11 +168,11 @@ export async function backtest(name: string): Promise<{ meta: Meta; dir: string;
   copyFileSync(join(dir0, `${name}.mq5`), join(dir, `${name}.mq5`));
   copyFileSync(iniPath, join(dir, "tester.ini"));
 
-  const report = join(MT5_DIR, "studio_report.htm");
+  const report = join(mt5Dir(), "studio_report.htm");
   let log = "";
   try {
     rmSync(report, { force: true });
-    rmSync(join(COMMON_FILES, DAILY_FILE), { force: true });
+    rmSync(join(commonFiles(), DAILY_FILE), { force: true });
     const t0 = Date.now();
     await runTerminal(writeIni(ini));
     log = testerLogTail(t0);
@@ -172,7 +182,7 @@ export async function backtest(name: string): Promise<{ meta: Meta; dir: string;
     saveMeta();
     const html = utf16(report);
     writeFileSync(join(dir, "report.htm"), html);
-    const daily = join(COMMON_FILES, DAILY_FILE);
+    const daily = join(commonFiles(), DAILY_FILE);
     let prop = null;
     if (existsSync(daily)) {
       copyFileSync(daily, join(dir, "daily.csv"));

@@ -78,3 +78,11 @@ export type LiveStatus = {
   started: string; login: string; server: string; running: boolean;
 };
 export type Account = { login: string; server: string; demo: boolean };
+
+export type Mt5Install = { dir: string; prefix: string | null; name: string; portable: boolean };
+export type Mt5Account = { login: string; server: string; lastSeen: string | null; current: boolean; failed: string | null };
+export type Mt5Info = {
+  installs: Mt5Install[]; dir: string; linked: boolean;
+  account: { login: string; server: string } | null; lastLogin: { login: string; server: string };
+  accounts: Mt5Account[];
+};

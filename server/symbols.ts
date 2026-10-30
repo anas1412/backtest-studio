@@ -3,7 +3,8 @@
 // history on disk. Cached in workspace/.studio/symbols.json.
 import { existsSync, readFileSync, writeFileSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { MT5_DIR, COMMON_FILES, STUDIO_DIR } from "./paths";
+import { STUDIO_DIR } from "./paths";
+import { mt5Dir, commonFiles, lastLogin, selectedAccount } from "./install";
 import { compile, lock, unlock, runTerminal, mt5Open, utf16 } from "./mt5";
 import { parseIni, writeIni } from "./ini";
 
@@ -15,15 +16,15 @@ export type SymbolInfo = {
 export type SymbolList = { server: string; refreshed: string | null; symbols: SymbolInfo[] };
 
 const CACHE = join(STUDIO_DIR, "symbols.json");
-const OUT = join(COMMON_FILES, "studio_symbols.tsv");
+const out = () => join(commonFiles(), "studio_symbols.tsv");
 
+// the account the next terminal start will use: the one picked in the app, else MT5's last
 export function currentServer(): string {
-  const f = join(MT5_DIR, "Config", "common.ini");
-  return existsSync(f) ? (utf16(f).match(/^Server=(.+)$/m)?.[1].trim() ?? "") : "";
+  return selectedAccount()?.server || lastLogin().server;
 }
 
 function historyYears(server: string): Map<string, [number, number]> {
-  const dir = join(MT5_DIR, "Bases", server, "history");
+  const dir = join(mt5Dir(), "Bases", server, "history");
   const out = new Map<string, [number, number]>();
   if (!server || !existsSync(dir)) return out;
   for (const sym of readdirSync(dir)) {
@@ -50,7 +51,7 @@ export async function refreshSymbols(): Promise<string | null> {
   if (mt5Open()) return "Close MetaTrader 5 first";
   if (!lock("symbols")) return "MT5 is busy with a backtest";
   try {
-    if (!existsSync(join(MT5_DIR, "MQL5/Scripts/StudioTools/StudioSymbols.ex5"))) {
+    if (!existsSync(join(mt5Dir(), "MQL5/Scripts/StudioTools/StudioSymbols.ex5"))) {
       const c = await compile("StudioTools/StudioSymbols.mq5", "MQL5/Scripts");
       if (!c.ok) return `StudioSymbols did not compile: ${c.output}`;
     }
@@ -59,11 +60,15 @@ export async function refreshSymbols(): Promise<string | null> {
     ini.set("StartUp", new Map([
       ["Script", "StudioTools\\StudioSymbols"], ["Symbol", first], ["Period", "H1"], ["ShutdownTerminal", "1"],
     ]));
-    rmSync(OUT, { force: true });
-    await runTerminal(writeIni(ini), 90_000);
-    if (!existsSync(OUT)) return "MT5 did not write the symbol list (no broker connection?)";
+    rmSync(out(), { force: true });
+    try {
+      await runTerminal(writeIni(ini), 90_000);
+    } catch (e) {
+      return (e as Error).message;
+    }
+    if (!existsSync(out())) return "MT5 did not write the symbol list (no broker connection?)";
 
-    const rows = readFileSync(OUT, "latin1").split(/\r?\n/).slice(1).filter(Boolean).map((l) => l.split("\t"));
+    const rows = readFileSync(out(), "latin1").split(/\r?\n/).slice(1).filter(Boolean).map((l) => l.split("\t"));
     const symbols: SymbolInfo[] = rows.map(([name, description, path, digits, spread, connected]) => ({
       name, description, path, digits: Number(digits),
       spread: connected === "1" && Number(spread) > 0 ? Number(spread) : null,
