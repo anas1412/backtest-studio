@@ -6,6 +6,8 @@ and what the app shows when it offers the update.
 
 ## Unreleased
 
+- Linux: backtests asked for in the chat failed in the AppImage ("server/cli.ts isn't there"); the AI's commands now reach the app's runner.
+
 ## 0.1.3 — 2026-10-30
 
 - Updates: a download that stops making progress for 30 seconds gives up and retries from another server, instead of hanging forever.

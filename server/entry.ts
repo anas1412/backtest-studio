@@ -6,10 +6,11 @@ if (!/bun(\.exe)?$/i.test(process.execPath)) process.env.STUDIO_BIN = process.ex
 // Inside an AppImage the environment points library and data paths into the
 // image. Wine, the agent CLIs and MT5 must not inherit that, so every path
 // list loses its entries under $APPDIR (and is dropped when nothing is left).
+// The studio's own paths stay: STUDIO_BIN is this executable inside the image.
 const appdir = process.env.APPDIR;
 if (process.env.APPIMAGE && appdir) {
   for (const [k, v] of Object.entries(process.env)) {
-    if (!v?.includes(appdir) || k === "APPDIR" || k === "APPIMAGE" || k === "STUDIO_RESOURCES") continue;
+    if (!v?.includes(appdir) || k === "APPDIR" || k === "APPIMAGE" || k.startsWith("STUDIO_")) continue;
     const kept = v.split(":").filter((p) => p && !p.startsWith(appdir));
     if (kept.length) process.env[k] = kept.join(":");
     else delete process.env[k];
