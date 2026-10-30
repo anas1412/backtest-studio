@@ -50,6 +50,19 @@ jobs:
         shell: bash
         run: bun install --frozen-lockfile && (cd web && bun install --frozen-lockfile)
 
+      # this version's section of CHANGELOG.md: the release notes, also shown in the app when it offers the update
+      - name: Release notes
+        id: notes
+        shell: bash
+        run: |
+          version="$(grep -m1 '"version"' desktop/tauri.conf.json | sed -E 's/.*"([0-9.]+)".*/\1/')"
+          {
+            echo 'body<<END_OF_NOTES'
+            awk -v v="$version" '/^## /{if (f) exit; f = ($2 == v); next}
+              f { if (NF) { if (out) printf "%s", gap; print; out = 1; gap = "" } else if (out) gap = gap "\n" }' CHANGELOG.md
+            echo 'END_OF_NOTES'
+          } >> "$GITHUB_OUTPUT"
+
       # beforeBuildCommand builds the web UI and compiles the server sidecar for this OS
       - uses: tauri-apps/tauri-action@v0
         env:
@@ -63,6 +76,9 @@ jobs:
           tagName: v__VERSION__
           releaseName: Backtest Studio v__VERSION__
           releaseBody: |
+            ${{ steps.notes.outputs.body }}
+
+            ---
             Linux: download the `.AppImage`, make it executable, run it.
             Windows: run the `-setup.exe`. Windows shows "unknown publisher" (the app isn't code-signed); choose More info → Run anyway.
             Installed copies update themselves from here.

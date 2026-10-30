@@ -37,7 +37,8 @@ export function UpdateChip() {
       <div className="w-72 p-3 text-xs">
         <p className="text-sm font-semibold">Backtest Studio {update.version}</p>
         <p className="mt-0.5 text-text-muted">You have {version}. Restarting installs it; your strategies, chats and keys are kept.</p>
-        {update.body && <p className="mt-2 max-h-32 overflow-y-auto whitespace-pre-wrap text-text-secondary">{update.body}</p>}
+        {/* the release notes, without the install instructions after "---" */}
+        {update.body && <p className="mt-2 max-h-32 overflow-y-auto whitespace-pre-wrap text-text-secondary">{update.body.split("\n---")[0].trim()}</p>}
         {phase === "downloading" && (
           <>
             <div className="mt-3 h-1 overflow-hidden rounded-full bg-surface-hover">
