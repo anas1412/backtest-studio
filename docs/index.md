@@ -18,9 +18,6 @@ hero:
     - theme: alt
       text: Get started
       link: /guide/install
-    - theme: alt
-      text: GitHub
-      link: https://github.com/anas1412/backtest-studio
 
 features:
   - title: Any AI
